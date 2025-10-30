@@ -6,11 +6,13 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
-  Pressable,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { CardProduto } from "../components/Produto";
+import { produtos } from "../components/produtos";
 
 const { width, height } = Dimensions.get("window");
 const MENU_WIDTH = Math.min(320, width * 0.8);
@@ -52,63 +54,63 @@ export default function About() {
       </View>
 
       {/* Conteúdo principal */}
-      <View style={styles.box2}>
-        <Text style={styles.text}>Seja bem-vindo</Text>
-        <View style={styles.circulo} />
-      </View>
+      <ScrollView style={styles.scrollArea} showsVerticalScrollIndicator={false}>
+        {/* Seções de produtos */}
+        {Object.keys(produtos).map((categoria) => (
+          <View key={categoria} style={styles.section}>
+            <Text style={styles.tituloSecao}>{categoria}</Text>
 
-      <View style={styles.box3}>
-        <Link href="/ProdutoSesc" style={styles.link}>
-          <View style={styles.Botao}>
-            <Text style={styles.text}>Fazer Pedido</Text>
+            <View style={styles.linhaCards}>
+              {produtos[categoria].map((item) => (
+                <CardProduto
+                  key={item.id}
+                  img={item.img}
+                  nome={item.nome}
+                  preco={item.preco}
+                  produtoId={item.id}
+                />
+              ))}
+            </View>
           </View>
-        </Link>
-      </View>
+        ))}
+      </ScrollView>
 
-      {/* Overlay e menu lateral */}
-     {open && (
-             <Animated.View
-               style={[
-                 styles.sideMenu,
-                 { transform: [{ translateX: anim }], height: height },
-               ]}
-             >
-               <TouchableOpacity onPress={closeMenu} style={styles.closeButton}>
-                 <Text style={styles.Text}>Cafe Sesc</Text>
-                 <Ionicons name="close" size={40} color="white" />
-               </TouchableOpacity>
-               <View style={styles.menuItems}>
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/homeSesc")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>home</Text>
-                 </TouchableOpacity>
-     
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/homeSenac")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>Café senac</Text>
-                 </TouchableOpacity>
-     
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/Conta")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>Conta</Text>
-                 </TouchableOpacity>
-     
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/carrinhoSesc")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>Carrinho</Text>
-                 </TouchableOpacity>
-     
-               </View>
-             </Animated.View>
-           )}
+      {/* Overlay quando menu aberto */}
+      {open && (
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={closeMenu} />
+      )}
+
+      {/* Menu lateral */}
+      {open && (
+        <Animated.View
+          style={[
+            styles.sideMenu,
+            { transform: [{ translateX: anim }], height: height },
+          ]}
+        >
+          <TouchableOpacity onPress={closeMenu} style={styles.closeButton}>
+            <Text style={styles.Text}>Cafe Sesc</Text>
+            <Ionicons name="close" size={40} color="white" />
+          </TouchableOpacity>
+          <View style={styles.menuItems}>
+            <TouchableOpacity onPress={() => navigateTo("/homeSesc")} style={styles.menuItem}>
+              <Text style={styles.menuText}>home</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => navigateTo("/homeSenac")} style={styles.menuItem}>
+              <Text style={styles.menuText}>Café senac</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => navigateTo("/Conta")} style={styles.menuItem}>
+              <Text style={styles.menuText}>Conta</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => navigateTo("/carrinhoSesc")} style={styles.menuItem}>
+              <Text style={styles.menuText}>Carrinho</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -177,6 +179,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: "rgba(0,0,0,0.4)",
+    zIndex: 900,
   },
   sideMenu: {
     position: "absolute",
@@ -195,24 +198,17 @@ const styles = StyleSheet.create({
     elevation: 8,
     zIndex: 1000,
   },
-  menuHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  menuTitle: {
-    color: "white",
-    fontSize: 22,
-    fontWeight: "700",
-  },
   closeButton: {
     marginLeft: 10,
     marginBottom: 20,
     flexDirection: "row",
     color: "white",
+    alignItems: "center",
   },
-   menuItem: {
+  menuItems: {
+    paddingHorizontal: 20,
+  },
+  menuItem: {
     width: 250,
     height: 40,
     backgroundColor: "#FF7700",
@@ -234,5 +230,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: "white",
+  },
+
+  /* estilos novos/restaurados para seção de produtos */
+  section: {
+    paddingHorizontal: 10,
+    paddingBottom: 16,
+  },
+  tituloSecao: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "white",
+    marginTop: 20,
+    marginBottom: 10,
+    marginLeft: 10,
+  },
+  linhaCards: {
+    flexDirection: "row",
+    flexWrap: "wrap", // permite quebrar em linhas automaticamente
+    justifyContent: "flex-start",
+    alignItems: "flex-start",
+    marginBottom: 10,
   },
 });

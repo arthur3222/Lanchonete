@@ -33,7 +33,7 @@ export default function About() {
         </Link>
       </View>
 
-      <Link href="/about">
+      <Link href="/">
         <Text style={styles.text}>Voltar</Text>
       </Link>
 

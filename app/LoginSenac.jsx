@@ -33,7 +33,7 @@ export default function About() {
         />
         <TouchableOpacity
           style={styles.button}
-          onPress={() => router.push("/CadastroSesc")}
+          onPress={() => router.push("/homeSenac")}
         >
           <Text style={styles.text}>Registrar</Text>
         </TouchableOpacity>

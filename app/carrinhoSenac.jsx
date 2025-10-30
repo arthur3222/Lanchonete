@@ -53,16 +53,7 @@ export default function About() {
 
       {/* Conteúdo principal */}
       <View style={styles.box2}>
-        <Text style={styles.text}>Seja bem-vindo</Text>
-        <View style={styles.circulo} />
-      </View>
-
-      <View style={styles.box3}>
-        <Link href="/ProdutoSesc" style={styles.link}>
-          <View style={styles.Botao}>
-            <Text style={styles.text}>Fazer Pedido</Text>
-          </View>
-        </Link>
+       
       </View>
 
       {/* Overlay e menu lateral */}
@@ -79,17 +70,17 @@ export default function About() {
                </TouchableOpacity>
                <View style={styles.menuItems}>
                  <TouchableOpacity
-                   onPress={() => navigateTo("/homeSesc")}
+                   onPress={() => navigateTo("/homeSenac")}
                    style={styles.menuItem}
                  >
                    <Text style={styles.menuText}>home</Text>
                  </TouchableOpacity>
      
                  <TouchableOpacity
-                   onPress={() => navigateTo("/homeSenac")}
+                   onPress={() => navigateTo("/homeSesc")}
                    style={styles.menuItem}
                  >
-                   <Text style={styles.menuText}>Café senac</Text>
+                   <Text style={styles.menuText}>Café Sesc</Text>
                  </TouchableOpacity>
      
                  <TouchableOpacity
@@ -100,7 +91,7 @@ export default function About() {
                  </TouchableOpacity>
      
                  <TouchableOpacity
-                   onPress={() => navigateTo("/carrinhoSesc")}
+                   onPress={() => navigateTo("/carrinhoSenac")}
                    style={styles.menuItem}
                  >
                    <Text style={styles.menuText}>Carrinho</Text>
@@ -116,12 +107,12 @@ export default function About() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#004586",
+    backgroundColor: "#FF7700",
   },
   topBar: {
     width: "100%",
     height: 80,
-    backgroundColor: "#004586",
+    backgroundColor: "#FF7700",
     justifyContent: "center",
     paddingHorizontal: 20,
   },
@@ -132,7 +123,7 @@ const styles = StyleSheet.create({
   box2: {
     width: "100%",
     height: "44%",
-    backgroundColor: "#004586",
+    backgroundColor: "#FF7700",
     borderTopWidth: 2,
     borderColor: "white",
     justifyContent: "center",
@@ -183,7 +174,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     width: MENU_WIDTH,
-    backgroundColor: "#003a73",
+    backgroundColor: "#FF7700",
     paddingTop: 40,
     paddingHorizontal: 16,
     borderRightWidth: 1,
@@ -215,7 +206,7 @@ const styles = StyleSheet.create({
    menuItem: {
     width: 250,
     height: 40,
-    backgroundColor: "#FF7700",
+    backgroundColor: "#004586",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,

@@ -52,63 +52,54 @@ export default function About() {
       </View>
 
       {/* Conteúdo principal */}
-      <View style={styles.box2}>
-        <Text style={styles.text}>Seja bem-vindo</Text>
-        <View style={styles.circulo} />
-      </View>
-
-      <View style={styles.box3}>
-        <Link href="/ProdutoSesc" style={styles.link}>
-          <View style={styles.Botao}>
-            <Text style={styles.text}>Fazer Pedido</Text>
-          </View>
-        </Link>
-      </View>
+      <View style={styles.box2}></View>
 
       {/* Overlay e menu lateral */}
-     {open && (
-             <Animated.View
-               style={[
-                 styles.sideMenu,
-                 { transform: [{ translateX: anim }], height: height },
-               ]}
-             >
-               <TouchableOpacity onPress={closeMenu} style={styles.closeButton}>
-                 <Text style={styles.Text}>Cafe Sesc</Text>
-                 <Ionicons name="close" size={40} color="white" />
-               </TouchableOpacity>
-               <View style={styles.menuItems}>
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/homeSesc")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>home</Text>
-                 </TouchableOpacity>
-     
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/homeSenac")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>Café senac</Text>
-                 </TouchableOpacity>
-     
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/Conta")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>Conta</Text>
-                 </TouchableOpacity>
-     
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/carrinhoSesc")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>Carrinho</Text>
-                 </TouchableOpacity>
-     
-               </View>
-             </Animated.View>
-           )}
+      {open && (
+        <Animated.View
+          style={[
+            styles.sideMenu,
+            { transform: [{ translateX: anim }], height: height },
+          ]}
+        >
+          <TouchableOpacity onPress={closeMenu} style={styles.closeButton}>
+            <Text style={styles.Text}>Cafe Sesc</Text>
+            <Ionicons name="close" size={40} color="white" />
+          </TouchableOpacity>
+          <View style={styles.menuItems}>
+            <TouchableOpacity
+              onPress={() => navigateTo("/homeSesc")}
+              style={styles.menuItem}
+            >
+              <Text style={styles.menuText}>home</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigateTo("/homeSenac")}
+              style={styles.menuItem}
+            >
+              <Text style={styles.menuText}>Café senac</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigateTo("/Conta")}
+              style={styles.menuItem}
+            >
+              <Text style={styles.menuText}>Conta</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigateTo("/carrinhoSesc")}
+              style={styles.menuItem}
+            >
+              <Text style={styles.menuText}>Carrinho</Text>
+            </TouchableOpacity>
+
+           
+            
+          </View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -212,7 +203,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     color: "white",
   },
-   menuItem: {
+  menuItem: {
     width: 250,
     height: 40,
     backgroundColor: "#FF7700",
