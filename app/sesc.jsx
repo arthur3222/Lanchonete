@@ -1,10 +1,17 @@
-import { View, Text, StyleSheet, Dimensions, Pressable } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
+import { useRouter } from "expo-router";
+import { Link } from "expo-router";
 
 const { width } = Dimensions.get("window");
 
 export default function About() {
   const router = useRouter(); // hook para navegação programática
+  const handleBack = () => {
+    try {
+      if (router?.canGoBack?.()) { router.back(); return; }
+    } catch (e) {}
+    router.push('/');
+  };
 
   return (
     <View style={styles.container}>
@@ -33,9 +40,9 @@ export default function About() {
         </Link>
       </View>
 
-      <Link href="/">
+      <TouchableOpacity onPress={handleBack}>
         <Text style={styles.text}>Voltar</Text>
-      </Link>
+      </TouchableOpacity>
 
       {/* Espaço inferior */}
       <View style={styles.box2}></View>

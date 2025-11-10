@@ -1,5 +1,4 @@
 import { View, Text, StyleSheet, Dimensions, TextInput, TouchableOpacity } from "react-native";
-import { Link } from "expo-router";
 import { useRouter } from "expo-router";
 
 
@@ -38,9 +37,9 @@ export default function About() {
           <Text style={styles.text}>Registrar</Text>
         </TouchableOpacity>
 
-        <Link href="/sesc">
+        <TouchableOpacity onPress={() => { try { if (router?.canGoBack?.()) { router.back(); return; } } catch(e){} router.push('/'); }}>
                 <Text style={styles.text}>Voltar</Text>
-        </Link>
+        </TouchableOpacity>
       </View>
 
       {/* Espaço inferior */}

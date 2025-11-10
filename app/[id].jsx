@@ -13,33 +13,56 @@ import {
   Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { produtosMap as produtosMapComponents } from "./produtos";
 
-// fallback: tenta importar diretamente do data module se components/produtos não fornecer
-let produtosMap = produtosMapComponents;
-try {
-  if (!produtosMap || Object.keys(produtosMap).length === 0) {
-    // eslint-disable-next-line global-require
-    const data = require("../data/produtos");
-    produtosMap = data.produtosMapExport || data.default || data.getProdutosMap?.();
-  }
-} catch (e) {
-  // ignore
-}
+import { getProdutoById } from "../data/produtos";
+import { useCart } from "../components/CartContext";
 
 export default function ProdutoDetalhe() {
   const router = useRouter();
-  const { id } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const rawId = params.id;
+  const store = params.store || 'sesc';
+  const { addToCart } = useCart();
+  const produto = getProdutoById(rawId);
 
-  const productId = Array.isArray(id) ? id[0] : id;
-  const produto = productId ? produtosMap?.[productId] : undefined;
+  const formatPrice = (value) => {
+    if (value === undefined || value === null || Number.isNaN(Number(value))) return "—";
+    try {
+      return new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value));
+    } catch (e) {
+      return Number(value).toFixed(2);
+    }
+  };
+
+  const imageSource = (() => {
+    if (!produto || produto.img === undefined || produto.img === null) return null;
+    if (typeof produto.img === "object" && produto.img.uri) return produto.img;
+    if (typeof produto.img === "string") return { uri: produto.img };
+    return produto.img;
+  })();
+
+  // Função robusta de voltar: usa canGoBack se disponível, senão navega para a home
+  const handleBack = () => {
+    try {
+      if (router && typeof router.canGoBack === 'function') {
+        if (router.canGoBack()) {
+          router.back();
+          return;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    // fallback
+    router.push('/');
+  };
 
   if (!produto) {
     return (
       <SafeAreaView style={styles.center}>
         <StatusBar barStyle={Platform.OS === "ios" ? "dark-content" : "light-content"} />
         <Text style={styles.errorText}>Produto não encontrado</Text>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backButtonText}>Voltar</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -49,13 +72,24 @@ export default function ProdutoDetalhe() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle={Platform.OS === "ios" ? "dark-content" : "light-content"} />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBack} style={styles.backWrapper}>
+          <Text style={styles.backText}>← Voltar</Text>
+        </TouchableOpacity>
+      </View>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Image source={produto.img} style={styles.imagem} resizeMode="contain" />
+        {imageSource ? (
+          <Image source={imageSource} style={styles.imagem} resizeMode="cover" />
+        ) : (
+          <View style={[styles.imagem, styles.noImage]}>
+            <Text style={styles.noImageText}>Sem imagem</Text>
+          </View>
+        )}
 
         <View style={styles.content}>
           <View style={styles.rowBetween}>
             <Text style={styles.nome}>{produto.nome || "Produto"}</Text>
-            <Text style={styles.preco}>R$ {Number(produto.preco).toFixed(2)}</Text>
+            <Text style={styles.preco}>R$ {formatPrice(produto.preco)}</Text>
           </View>
 
           <View style={styles.separator} />
@@ -79,7 +113,8 @@ export default function ProdutoDetalhe() {
           style={styles.buyButton}
           activeOpacity={0.85}
           onPress={() => {
-            Alert.alert("Adicionado", `${produto.nome || "Produto"} adicionado ao carrinho!`);
+            addToCart(store, produto);
+            Alert.alert("Adicionado", `${produto.nome || "Produto"} adicionado ao carrinho (${store})!`);
           }}
         >
           <Text style={styles.buyButtonText}>Adicionar ao Carrinho</Text>
@@ -90,14 +125,13 @@ export default function ProdutoDetalhe() {
 }
 
 /* Opcional: CardProduto exportado para ser usado em listas */
-export function CardProduto({ img, nome, preco, produtoId, onPress, store }) {
+export function CardProduto({ img, nome, preco, produtoId, onPress }) {
   const router = useRouter();
 
   const handlePress = () => {
     if (onPress) return onPress();
     if (produtoId) {
-      const q = store ? `?store=${store}` : '';
-      router.push(`/${produtoId}${q}`);
+      router.push(`/${produtoId}`);
     }
   };
 
@@ -125,6 +159,9 @@ export function CardProduto({ img, nome, preco, produtoId, onPress, store }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
+  header: { width: '100%', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#fff', zIndex: 20, flexDirection: 'row', alignItems: 'center' },
+  backWrapper: { marginRight: 12, paddingVertical: 6, paddingHorizontal: 8 },
+  backText: { color: '#004586', fontSize: 16, fontWeight: '600' },
   scrollContent: { paddingBottom: 120 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff", padding: 20 },
   errorText: { color: "#666", fontSize: 18, marginBottom: 20, textAlign: "center" },

@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CardProduto } from "../components/Produto";
-import { produtos } from "../components/produtos";
+import { produtos } from "../data/produtos";
 
 const { width, height } = Dimensions.get("window");
 const MENU_WIDTH = Math.min(320, width * 0.8);
@@ -68,6 +68,7 @@ export default function About() {
                   nome={item.nome}
                   preco={item.preco}
                   produtoId={item.id}
+                  store="sesc"
                 />
               ))}
             </View>
@@ -101,10 +102,7 @@ export default function About() {
               <Text style={styles.menuText}>Café senac</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigateTo("/Conta")} style={styles.menuItem}>
-              <Text style={styles.menuText}>Conta</Text>
-            </TouchableOpacity>
-
+          
             <TouchableOpacity onPress={() => navigateTo("/carrinhoSesc")} style={styles.menuItem}>
               <Text style={styles.menuText}>Carrinho</Text>
             </TouchableOpacity>

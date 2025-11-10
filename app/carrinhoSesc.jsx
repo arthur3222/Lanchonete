@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
+import { useCart } from "../components/CartContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width, height } = Dimensions.get("window");
@@ -17,6 +18,7 @@ const MENU_WIDTH = Math.min(320, width * 0.8);
 
 export default function About() {
   const router = useRouter();
+  const { carts, removeFromCart, clearCart } = useCart();
   const [open, setOpen] = useState(false);
   const anim = useRef(new Animated.Value(-MENU_WIDTH)).current;
 
@@ -52,7 +54,31 @@ export default function About() {
       </View>
 
       {/* Conteúdo principal */}
-      <View style={styles.box2}></View>
+      <View style={styles.box2}>
+        <Text style={{ color: "#fff", fontSize: 20, marginBottom: 8 }}>
+          Carrinho Sesc
+        </Text>
+        {carts.sesc.length === 0 ? (
+          <Text style={{ color: "#fff" }}>Carrinho vazio</Text>
+        ) : (
+          carts.sesc.map((p, i) => (
+            <View key={i} style={{ padding: 8 }}>
+              <Text style={{ color: "#fff" }}>
+                {p.nome} — R$ {Number(p.preco).toFixed(2)}
+              </Text>
+              <TouchableOpacity onPress={() => removeFromCart("sesc", i)}>
+                <Text style={{ color: "#fff" }}>Remover</Text>
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
+        <TouchableOpacity
+          onPress={() => clearCart("sesc")}
+          style={{ marginTop: 8 }}
+        >
+          <Text style={{ color: "#fff" }}>Limpar carrinho</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Overlay e menu lateral */}
       {open && (
@@ -75,17 +101,17 @@ export default function About() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => navigateTo("/homeSenac")}
+              onPress={() => navigateTo("/ProdutoSesc")}
               style={styles.menuItem}
             >
-              <Text style={styles.menuText}>Café senac</Text>
+              <Text style={styles.menuText}>Café Sesc</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => navigateTo("/Conta")}
+              onPress={() => navigateTo("/ProdutoSenac")}
               style={styles.menuItem}
             >
-              <Text style={styles.menuText}>Conta</Text>
+              <Text style={styles.menuText}>Café senac</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -94,9 +120,6 @@ export default function About() {
             >
               <Text style={styles.menuText}>Carrinho</Text>
             </TouchableOpacity>
-
-           
-            
           </View>
         </Animated.View>
       )}

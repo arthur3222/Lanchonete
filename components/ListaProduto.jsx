@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import CardProduto from "./Produto";
+import { CardProduto } from "./Produto";
 
 export default function ListaProdutos({ categoria, itens }) {
   return (

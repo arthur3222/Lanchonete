@@ -6,11 +6,20 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
-  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// Paleta de cores para SESC
+const PALETTE = {
+  background: '#004586',
+  circleBg: '#000000',
+  buttonBg: '#000000',
+  sideMenuBg: '#003a73',
+  menuItemBg: '#FF7700',
+  textColor: '#ffffff'
+};
 
 const { width, height } = Dimensions.get("window");
 const MENU_WIDTH = Math.min(320, width * 0.8);
@@ -54,11 +63,15 @@ export default function About() {
       {/* Conteúdo principal */}
       <View style={styles.box2}>
         <Text style={styles.text}>Seja bem-vindo</Text>
-        <View style={styles.circulo} />
+        <Link href="/Perfil">
+          <View style={styles.circulo}>
+            <Text style={styles.circleText}>Ir para o Perfil</Text>
+          </View>
+        </Link>
       </View>
 
       <View style={styles.box3}>
-        <Link href="/ProdutoSesc" style={styles.link}>
+        <Link href="/ProdutoSesc">
           <View style={styles.Botao}>
             <Text style={styles.text}>Fazer Pedido</Text>
           </View>
@@ -66,49 +79,41 @@ export default function About() {
       </View>
 
       {/* Overlay e menu lateral */}
-     {open && (
-             <Animated.View
-               style={[
-                 styles.sideMenu,
-                 { transform: [{ translateX: anim }], height: height },
-               ]}
-             >
-               <TouchableOpacity onPress={closeMenu} style={styles.closeButton}>
-                 <Text style={styles.Text}>Cafe Sesc</Text>
-                 <Ionicons name="close" size={40} color="white" />
-               </TouchableOpacity>
-               <View style={styles.menuItems}>
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/homeSesc")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>home</Text>
-                 </TouchableOpacity>
-     
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/homeSenac")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>Café senac</Text>
-                 </TouchableOpacity>
-     
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/Conta")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>Conta</Text>
-                 </TouchableOpacity>
-     
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/carrinhoSesc")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>Carrinho</Text>
-                 </TouchableOpacity>
-     
-               </View>
-             </Animated.View>
-           )}
+      {open && (
+        <Animated.View
+          style={[
+            styles.sideMenu,
+            { transform: [{ translateX: anim }], height: height },
+          ]}
+        >
+          <TouchableOpacity onPress={closeMenu} style={styles.closeButton}>
+            <Text style={styles.Text}>Cafe Sesc</Text>
+            <Ionicons name="close" size={40} color="white" />
+          </TouchableOpacity>
+          <View style={styles.menuItems}>
+            <TouchableOpacity
+              onPress={() => navigateTo("/homeSesc")}
+              style={styles.menuItem}
+            >
+              <Text style={styles.menuText}>home</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigateTo("/homeSenac")}
+              style={styles.menuItem}
+            >
+              <Text style={styles.menuText}>Café senac</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigateTo("/carrinhoSesc")}
+              style={styles.menuItem}
+            >
+              <Text style={styles.menuText}>Carrinho</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -116,12 +121,12 @@ export default function About() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#004586",
+    backgroundColor: PALETTE.background,
   },
   topBar: {
     width: "100%",
     height: 80,
-    backgroundColor: "#004586",
+    backgroundColor: PALETTE.background,
     justifyContent: "center",
     paddingHorizontal: 20,
   },
@@ -132,41 +137,50 @@ const styles = StyleSheet.create({
   box2: {
     width: "100%",
     height: "44%",
-    backgroundColor: "#004586",
+    backgroundColor: PALETTE.background,
     borderTopWidth: 2,
-    borderColor: "white",
+    borderColor: PALETTE.textColor,
     justifyContent: "center",
     alignItems: "center",
   },
   box3: {
     width: "100%",
     height: "44%",
-    backgroundColor: "#004586",
+    backgroundColor: PALETTE.background,
     borderTopWidth: 2,
-    borderColor: "white",
+    borderColor: PALETTE.textColor,
     justifyContent: "center",
     alignItems: "center",
   },
   text: {
-    color: "white",
+    color: PALETTE.textColor,
     fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  circleText: {
+    color: PALETTE.textColor,
+    fontSize: 18,
+    fontWeight: "700",
+    textAlign: 'center',
   },
   circulo: {
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: "black",
+    backgroundColor: PALETTE.circleBg,
     borderWidth: 2,
-    borderColor: "white",
+    borderColor: PALETTE.textColor,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   Botao: {
     width: 250,
     height: 250,
-    backgroundColor: "black",
+    backgroundColor: PALETTE.buttonBg,
     borderWidth: 2,
-    borderColor: "white",
+    borderColor: PALETTE.textColor,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -183,7 +197,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     width: MENU_WIDTH,
-    backgroundColor: "#003a73",
+    backgroundColor: PALETTE.sideMenuBg,
     paddingTop: 40,
     paddingHorizontal: 16,
     borderRightWidth: 1,
@@ -212,10 +226,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     color: "white",
   },
-   menuItem: {
+  menuItem: {
     width: 250,
     height: 40,
-    backgroundColor: "#FF7700",
+    backgroundColor: PALETTE.menuItemBg,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
@@ -226,7 +240,7 @@ const styles = StyleSheet.create({
   Text: {
     fontSize: 30,
     fontWeight: "bold",
-    color: "white",
+    color: PALETTE.textColor,
     paddingHorizontal: 10,
     paddingEnd: 10,
   },

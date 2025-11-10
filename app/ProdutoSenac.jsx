@@ -1,16 +1,18 @@
 import React, { useRef, useState } from "react";
 import {
-  ScrollView,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Animated,
   Dimensions,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import CardProduto from "../components/Produto";
+import { Link, useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { CardProduto } from "../components/Produto";
+import { produtos } from "../data/produtos";
 
 const { width, height } = Dimensions.get("window");
 const MENU_WIDTH = Math.min(320, width * 0.8);
@@ -42,26 +44,8 @@ export default function About() {
     router.push(path);
   };
 
-  const produtos = {
-    Salgados: [
-      { id: "1", img: require("../assets/R.jpg"), nome: "Coxinha", preco: 7.99, descricao: "Coxinha crocante." },
-      { id: "2", img: require("../assets/abc.png"), nome: "Pastel", preco: 8.99, descricao: "Pastel recheado." },
-      { id: "3", img: require("../assets/abc.png"), nome: "Empada", preco: 6.99, descricao: "Empada quentinha." },
-    ],
-    Bebidas: [
-      { id: "4", img: require("../assets/abc.png"), nome: "Refrigerante", preco: 5.99, descricao: "Lata 350ml." },
-      { id: "5", img: require("../assets/R.jpg"), nome: "Suco Natural", preco: 6.99, descricao: "Suco natural fresco." },
-      { id: "6", img: require("../assets/abc.png"), nome: "Água", preco: 3.5, descricao: "Garrafa 500ml." },
-    ],
-    sobremesa: [
-      { id: "7", img: require("../assets/abc.png"), nome: "Refrigerante", preco: 5.99, descricao: "Lata 350ml." },
-      { id: "8", img: require("../assets/R.jpg"), nome: "Suco Natural", preco: 6.99, descricao: "Suco natural fresco." },
-      { id: "9", img: require("../assets/abc.png"), nome: "Água", preco: 3.5, descricao: "Garrafa 500ml." },
-    ],
-  };
-
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Barra superior */}
       <View style={styles.topBar}>
         <TouchableOpacity onPress={openMenu} style={styles.menuButton}>
@@ -69,27 +53,33 @@ export default function About() {
         </TouchableOpacity>
       </View>
 
-      {/* Conteúdo rolável */}
-      <ScrollView
-        style={styles.scrollArea}
-        showsVerticalScrollIndicator={false}
-      >
+      {/* Conteúdo principal */}
+      <ScrollView style={styles.scrollArea} showsVerticalScrollIndicator={false}>
+        {/* Seções de produtos */}
         {Object.keys(produtos).map((categoria) => (
-          <View key={categoria}>
+          <View key={categoria} style={styles.section}>
             <Text style={styles.tituloSecao}>{categoria}</Text>
+
             <View style={styles.linhaCards}>
-              {produtos[categoria].map((item, index) => (
+              {produtos[categoria].map((item) => (
                 <CardProduto
-                  key={index}
+                  key={item.id}
                   img={item.img}
                   nome={item.nome}
                   preco={item.preco}
+                  produtoId={item.id}
+                  store="senac"
                 />
               ))}
             </View>
           </View>
         ))}
       </ScrollView>
+
+      {/* Overlay quando menu aberto */}
+      {open && (
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={closeMenu} />
+      )}
 
       {/* Menu lateral */}
       {open && (
@@ -104,38 +94,22 @@ export default function About() {
             <Ionicons name="close" size={40} color="white" />
           </TouchableOpacity>
           <View style={styles.menuItems}>
-            <TouchableOpacity
-              onPress={() => navigateTo("/homeSesc")}
-              style={styles.menuItem}
-            >
+            <TouchableOpacity onPress={() => navigateTo("/homeSesc")} style={styles.menuItem}>
               <Text style={styles.menuText}>home</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => navigateTo("/homeSesc")}
-              style={styles.menuItem}
-            >
-              <Text style={styles.menuText}>Café Sesc</Text>
+            <TouchableOpacity onPress={() => navigateTo("/homeSenac")} style={styles.menuItem}>
+              <Text style={styles.menuText}>Café senac</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => navigateTo("/Conta")}
-              style={styles.menuItem}
-            >
-              <Text style={styles.menuText}>Conta</Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => navigateTo("/Carrinho")}
-              style={styles.menuItem}
-            >
+            <TouchableOpacity onPress={() => navigateTo("/carrinhoSesc")} style={styles.menuItem}>
               <Text style={styles.menuText}>Carrinho</Text>
             </TouchableOpacity>
-
           </View>
         </Animated.View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -146,54 +120,88 @@ const styles = StyleSheet.create({
   },
   topBar: {
     width: "100%",
-    height: 60,
+    height: 80,
     backgroundColor: "#FF7700",
-    borderBottomWidth: 2,
-    borderColor: "white",
     justifyContent: "center",
     paddingHorizontal: 20,
-    marginTop: 30,
   },
   menuButton: {
     padding: 6,
     borderRadius: 6,
   },
-  scrollArea: {
-    flex: 1,
+  box2: {
+    width: "100%",
+    height: "44%",
     backgroundColor: "#FF7700",
-  },
-  tituloSecao: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "white",
-    marginTop: 20,
-    marginBottom: 10,
-    marginLeft: 20,
-  },
-  linhaCards: {
-    flexDirection: "row",
-    justifyContent: "space-evenly",
+    borderTopWidth: 2,
+    borderColor: "white",
+    justifyContent: "center",
     alignItems: "center",
+  },
+  box3: {
+    width: "100%",
+    height: "44%",
+    backgroundColor: "#FF7700",
+    borderTopWidth: 2,
+    borderColor: "white",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  text: {
+    color: "white",
+    fontSize: 28,
+    fontWeight: "bold",
     marginBottom: 20,
   },
-  sideMenu: {
+  circulo: {
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: "black",
+    borderWidth: 2,
+    borderColor: "white",
+  },
+  Botao: {
+    width: 250,
+    height: 250,
+    backgroundColor: "black",
+    borderWidth: 2,
+    borderColor: "white",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  overlay: {
     position: "absolute",
     top: 0,
     left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    zIndex: 900,
+  },
+  sideMenu: {
+    position: "absolute",
+    left: 0,
+    top: 0,
     width: MENU_WIDTH,
     backgroundColor: "#FF7700",
     paddingTop: 40,
-    zIndex: 1000,
-    elevation: 5,
+    paddingHorizontal: 16,
+    borderRightWidth: 1,
+    borderRightColor: "rgba(255,255,255,0.08)",
     shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+    zIndex: 1000,
   },
   closeButton: {
     marginLeft: 10,
     marginBottom: 20,
     flexDirection: "row",
     color: "white",
+    alignItems: "center",
   },
   menuItems: {
     paddingHorizontal: 20,
@@ -220,5 +228,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: "white",
+  },
+
+  /* estilos novos/restaurados para seção de produtos */
+  section: {
+    paddingHorizontal: 10,
+    paddingBottom: 16,
+  },
+  tituloSecao: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "white",
+    marginTop: 20,
+    marginBottom: 10,
+    marginLeft: 10,
+  },
+  linhaCards: {
+    flexDirection: "row",
+    flexWrap: "wrap", // permite quebrar em linhas automaticamente
+    justifyContent: "flex-start",
+    alignItems: "flex-start",
+    marginBottom: 10,
   },
 });

@@ -6,11 +6,20 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
-  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// Paleta de cores para SENAC
+const PALETTE = {
+  background: '#FF7700',
+  circleBg: '#000000',
+  buttonBg: '#000000',
+  sideMenuBg: '#FF7700',
+  menuItemBg: '#004586',
+  textColor: '#ffffff'
+};
 
 const { width, height } = Dimensions.get("window");
 const MENU_WIDTH = Math.min(320, width * 0.8);
@@ -54,7 +63,9 @@ export default function About() {
       {/* Conteúdo principal */}
       <View style={styles.box2}>
         <Text style={styles.text}>Seja bem-vindo</Text>
-        <View style={styles.circulo} />
+        <View style={styles.circulo}>
+                    <Text style={styles.circleText}>Ir para o Perfil</Text>
+                  </View>
       </View>
 
       <View style={styles.box3}>
@@ -92,12 +103,7 @@ export default function About() {
                    <Text style={styles.menuText}>Café sesc</Text>
                  </TouchableOpacity>
      
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/Conta")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>Conta</Text>
-                 </TouchableOpacity>
+
      
                  <TouchableOpacity
                    onPress={() => navigateTo("/carrinhoSenac")}
@@ -116,12 +122,12 @@ export default function About() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FF7700",
+    backgroundColor: PALETTE.background,
   },
   topBar: {
     width: "100%",
     height: 80,
-    backgroundColor: "#FF7700",
+    backgroundColor: PALETTE.background,
     justifyContent: "center",
     paddingHorizontal: 20,
   },
@@ -132,23 +138,23 @@ const styles = StyleSheet.create({
   box2: {
     width: "100%",
     height: "44%",
-    backgroundColor: "#FF7700",
+    backgroundColor: PALETTE.background,
     borderTopWidth: 2,
-    borderColor: "white",
+    borderColor: PALETTE.textColor,
     justifyContent: "center",
     alignItems: "center",
   },
   box3: {
     width: "100%",
     height: "44%",
-    backgroundColor: "#FF7700",
+    backgroundColor: PALETTE.background,
     borderTopWidth: 2,
-    borderColor: "white",
+    borderColor: PALETTE.textColor,
     justifyContent: "center",
     alignItems: "center",
   },
   text: {
-    color: "white",
+    color: PALETTE.textColor,
     fontSize: 28,
     fontWeight: "bold",
     marginBottom: 20,
@@ -157,16 +163,24 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: "black",
+    backgroundColor: PALETTE.circleBg,
     borderWidth: 2,
-    borderColor: "white",
+    borderColor: PALETTE.textColor,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  circleText: {
+    color: PALETTE.textColor,
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   Botao: {
     width: 250,
     height: 250,
-    backgroundColor: "black",
+    backgroundColor: PALETTE.buttonBg,
     borderWidth: 2,
-    borderColor: "white",
+    borderColor: PALETTE.textColor,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -183,7 +197,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     width: MENU_WIDTH,
-    backgroundColor: "#FF7700",
+    backgroundColor: PALETTE.sideMenuBg,
     paddingTop: 40,
     paddingHorizontal: 16,
     borderRightWidth: 1,
@@ -215,24 +229,24 @@ const styles = StyleSheet.create({
    menuItem: {
     width: 250,
     height: 40,
-    backgroundColor: "#004586",
+    backgroundColor: PALETTE.menuItemBg,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
-    borderColor: "white",
+    borderColor: "black",
     borderRadius: 6,
     marginTop: 10,
   },
   Text: {
     fontSize: 30,
     fontWeight: "bold",
-    color: "white",
+    color: PALETTE.textColor,
     paddingHorizontal: 10,
     paddingEnd: 10,
   },
   menuText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "white",
+    color: PALETTE.textColor,
   },
 });
