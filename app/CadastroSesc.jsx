@@ -1,5 +1,11 @@
+import React, { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { View, Text, StyleSheet, Dimensions, TextInput, TouchableOpacity } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, Link } from "expo-router";
+
+// Config do Supabase (REST)
+const SUPABASE_URL = "https://mihtxdlmlntfxkclkvis.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1paHR4ZGxtbG50ZnhrY2xrdmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0MTQ4MzksImV4cCI6MjA3NDk5MDgzOX0.oqMeEOnV5463hF8BaJ916yYyNjDC2bJe73SCP2Fg1yA";
 
 const { width } = Dimensions.get("window");
 
@@ -8,6 +14,54 @@ export default function About() {
   const handleBack = () => {
     try { if (router?.canGoBack?.()) { router.back(); return; } } catch (e) {}
     router.push('/');
+  };
+
+  // Estado do formulário
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const handleRegister = async () => {
+    setMsg("");
+    const normEmail = email.trim().toLowerCase();
+    if (!name || !normEmail || !password || !confirm) {
+      setMsg("Preencha todos os campos."); return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(normEmail)) { setMsg("Email inválido."); return; }
+    if (password.length < 6) { setMsg("A senha deve ter ao menos 6 caracteres."); return; }
+    if (password !== confirm) { setMsg("As senhas não conferem."); return; }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          email: normEmail,
+          password,
+          data: { name, org: "SESC" },
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMsg(body?.msg || body?.error_description || body?.message || "Erro ao cadastrar.");
+        return;
+      }
+      setMsg("Cadastro criado! Verifique seu email para confirmar.");
+      setTimeout(() => router.replace("/LoginSesc"), 1200);
+    } catch (e) {
+      setMsg("Falha inesperada. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -22,44 +76,52 @@ export default function About() {
 
       {/* Inputs funcionais */}
       <View style={styles.box}>
-        <TextInput
-          placeholder="Email"
-          placeholderTextColor="#fff"
-          style={styles.input}
-        />
-        <TextInput
-          placeholder="Senha"
-          placeholderTextColor="#fff"
-          secureTextEntry={true}
-          style={styles.input}
-        />
-
+        {/* Removidos inputs duplicados e não controlados */}
         <TextInput
           placeholder="Nome Completo"
           placeholderTextColor="#fff"
           style={styles.input}
+          value={name}
+          onChangeText={setName}
         />
         <TextInput
           placeholder="Email"
           placeholderTextColor="#fff"
           style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
         />
         <TextInput
           placeholder="Senha"
           placeholderTextColor="#fff"
-          secureTextEntry={true}
+          secureTextEntry
           style={styles.input}
+          value={password}
+          onChangeText={setPassword}
         />
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push("/LoginSesc")}
-        >
-          <Text style={styles.text}>Registrar</Text>
-        </TouchableOpacity>
+        <TextInput
+          placeholder="Confirmar Senha"
+          placeholderTextColor="#fff"
+          secureTextEntry
+          style={styles.input}
+          value={confirm}
+          onChangeText={setConfirm}
+        />
 
-        <TouchableOpacity onPress={handleBack}>
-                <Text style={styles.text}>Voltar</Text>
+        {!!msg && <Text style={{ color: "#fff" }}>{msg}</Text>}
+
+        <TouchableOpacity
+          style={[styles.button, loading && { opacity: 0.6 }]}
+          onPress={handleRegister}
+          disabled={loading}
+        >
+          <Text style={styles.text}>{loading ? "Cadastrando..." : "Registrar"}</Text>
         </TouchableOpacity>
+<Link href={"/sesc"} >
+          <Text style={styles.text}>Voltar</Text>
+        </Link >
       </View>
 
       {/* Espaço inferior */}

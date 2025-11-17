@@ -1,4 +1,5 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
@@ -6,28 +7,105 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  Image, // adicionado
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { createClient } from "@supabase/supabase-js"; // adicionado
 
-// Paleta de cores para SENAC
+// Paleta de cores para SENAC (mantida)
 const PALETTE = {
-  background: '#FF7700',
-  circleBg: '#000000',
-  buttonBg: '#000000',
-  sideMenuBg: '#FF7700',
-  menuItemBg: '#004586',
-  textColor: '#ffffff'
+  background: "#FF7700",
+  circleBg: "#000000",
+  buttonBg: "#000000",
+  sideMenuBg: "#FF7700",
+  menuItemBg: "#004586",
+  textColor: "#ffffff",
 };
 
 const { width, height } = Dimensions.get("window");
 const MENU_WIDTH = Math.min(320, width * 0.8);
 
+// Config do Supabase (REST)
+const SUPABASE_URL = "https://mihtxdlmlntfxkclkvis.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1paHR4ZGxtbG50ZnhrY2xrdmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0MTQ4MzksImV4cCI6MjA3NDk5MDgzOX0.oqMeEOnV5463hF8BaJ916yYyNjDC2bJe73SCP2Fg1yA";
+
+const LAST_LANCHONETE_KEY = "@last_lanchonete"; // adicionado
+
+// cliente Supabase com sessão persistente
+let supabaseClient = null;
+const getSupabase = () => {
+  if (supabaseClient) return supabaseClient;
+  try {
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        storage: AsyncStorage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+      },
+    });
+    return supabaseClient;
+  } catch {
+    return null;
+  }
+};
+
 export default function About() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const anim = useRef(new Animated.Value(-MENU_WIDTH)).current;
+  const [userEmail, setUserEmail] = useState("");
+  const [userPhoto, setUserPhoto] = useState(""); // adicionado
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const sb = getSupabase();
+        const { data } = (await sb?.auth.getSession()) || {};
+        const emailSessao =
+          data?.session?.user?.email || data?.session?.user?.user_metadata?.email;
+        if (emailSessao) {
+          setUserEmail(emailSessao);
+          // carrega foto local do perfil
+          const raw = await AsyncStorage.getItem("@profile");
+          if (raw) {
+            try { const p = JSON.parse(raw); if (p?.imageUrl) setUserPhoto(p.imageUrl); } catch {}
+          }
+          // redireciona conforme última lanchonete
+          const last = await AsyncStorage.getItem(LAST_LANCHONETE_KEY);
+          if (last === "sesc") {
+            router.replace("/homeSesc");
+            return;
+          }
+          await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "senac");
+          return;
+        }
+        // fallback legado
+        const saved = await AsyncStorage.getItem("authUser");
+        if (!saved) {
+          router.replace("/LoginSenac");
+          return;
+        }
+        const savedObj = JSON.parse(saved);
+        setUserEmail(savedObj?.email || "");
+        const raw = await AsyncStorage.getItem("@profile");
+        if (raw) {
+          try { const p = JSON.parse(raw); if (p?.imageUrl) setUserPhoto(p.imageUrl); } catch {}
+        }
+        const last = await AsyncStorage.getItem(LAST_LANCHONETE_KEY);
+        if (last === "sesc") {
+          router.replace("/homeSesc");
+          return;
+        }
+        await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "senac");
+      } catch {
+        router.replace("/LoginSenac");
+      }
+    })();
+  }, []);
 
   const openMenu = () => {
     setOpen(true);
@@ -46,9 +124,27 @@ export default function About() {
     }).start(() => setOpen(false));
   };
 
-  const navigateTo = (path) => {
+  const navigateTo = async (path) => {
     closeMenu();
+    try {
+      if (path.toLowerCase().includes("senac")) {
+        await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "senac");
+      } else if (path.toLowerCase().includes("sesc")) {
+        await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "sesc");
+      }
+    } catch {}
     router.push(path);
+  };
+
+  const logout = async () => {
+    try {
+      const sb = getSupabase();
+      await sb?.auth.signOut();
+      await AsyncStorage.removeItem("authUser");
+      await AsyncStorage.removeItem("sb.session");
+    } catch {}
+    closeMenu();
+    router.replace("/LoginSenac");
   };
 
   return (
@@ -63,13 +159,19 @@ export default function About() {
       {/* Conteúdo principal */}
       <View style={styles.box2}>
         <Text style={styles.text}>Seja bem-vindo</Text>
-        <View style={styles.circulo}>
-                    <Text style={styles.circleText}>Ir para o Perfil</Text>
-                  </View>
+        <Link href="/Perfil">
+          <View style={styles.circulo}>
+            {userPhoto ? (
+              <Image source={{ uri: userPhoto }} style={styles.profileThumb} />
+            ) : (
+              <Text style={styles.circleText}>Ir para o Perfil</Text>
+            )}
+          </View>
+        </Link>
       </View>
 
       <View style={styles.box3}>
-        <Link href="/ProdutoSenac" style={styles.link}>
+        <Link href="/ProdutoSenac">
           <View style={styles.Botao}>
             <Text style={styles.text}>Fazer Pedido</Text>
           </View>
@@ -77,44 +179,52 @@ export default function About() {
       </View>
 
       {/* Overlay e menu lateral */}
-     {open && (
-             <Animated.View
-               style={[
-                 styles.sideMenu,
-                 { transform: [{ translateX: anim }], height: height },
-               ]}
-             >
-               <TouchableOpacity onPress={closeMenu} style={styles.closeButton}>
-                 <Text style={styles.Text}>Cafe Sesc</Text>
-                 <Ionicons name="close" size={40} color="white" />
-               </TouchableOpacity>
-               <View style={styles.menuItems}>
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/homeSenac")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>home</Text>
-                 </TouchableOpacity>
-     
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/homeSesc")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>Café sesc</Text>
-                 </TouchableOpacity>
-     
+      {open && (
+        <Animated.View
+          style={[
+            styles.sideMenu,
+            { transform: [{ translateX: anim }], height: height },
+          ]}
+        >
+          <TouchableOpacity onPress={closeMenu} style={styles.closeButton}>
+            <Text style={styles.Text}>Café Senac</Text>
+            <Ionicons name="close" size={40} color="white" />
+          </TouchableOpacity>
 
-     
-                 <TouchableOpacity
-                   onPress={() => navigateTo("/carrinhoSenac")}
-                   style={styles.menuItem}
-                 >
-                   <Text style={styles.menuText}>Carrinho</Text>
-                 </TouchableOpacity>
-     
-               </View>
-             </Animated.View>
-           )}
+          {!!userEmail && (
+            <Text style={{ color: "white", marginLeft: 10, marginBottom: 8 }}>
+              {userEmail}
+            </Text>
+          )}
+
+          <View className="menuItems" style={styles.menuItems}>
+            <TouchableOpacity
+              onPress={() => navigateTo("/homeSenac")}
+              style={styles.menuItem}
+            >
+              <Text style={styles.menuText}>home</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigateTo("/homeSesc")}
+              style={styles.menuItem}
+            >
+              <Text style={styles.menuText}>Café sesc</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigateTo("/carrinhoSenac")}
+              style={styles.menuItem}
+            >
+              <Text style={styles.menuText}>Carrinho</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={logout} style={styles.menuItem}>
+              <Text style={styles.menuText}>Sair</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -157,7 +267,8 @@ const styles = StyleSheet.create({
     color: PALETTE.textColor,
     fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 12,
+    textAlign: "center",
   },
   circulo: {
     width: 250,
@@ -166,14 +277,21 @@ const styles = StyleSheet.create({
     backgroundColor: PALETTE.circleBg,
     borderWidth: 2,
     borderColor: PALETTE.textColor,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  profileThumb: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 2,
+    borderColor: PALETTE.textColor,
   },
   circleText: {
     color: PALETTE.textColor,
     fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
+    fontWeight: "700",
+    textAlign: "center",
   },
   Botao: {
     width: 250,
@@ -226,7 +344,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     color: "white",
   },
-   menuItem: {
+  menuItem: {
     width: 250,
     height: 40,
     backgroundColor: PALETTE.menuItemBg,

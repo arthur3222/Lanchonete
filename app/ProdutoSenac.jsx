@@ -103,7 +103,7 @@ export default function About() {
             </TouchableOpacity>
 
 
-            <TouchableOpacity onPress={() => navigateTo("/carrinhoSesc")} style={styles.menuItem}>
+            <TouchableOpacity onPress={() => navigateTo("/carrinhoSenac")} style={styles.menuItem}>
               <Text style={styles.menuText}>Carrinho</Text>
             </TouchableOpacity>
           </View>

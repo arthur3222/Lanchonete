@@ -1,4 +1,4 @@
-// app/produto/[id].js
+// File: app/produto/[id].js
 import React from "react";
 import {
   View,
@@ -11,28 +11,23 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  TextInput,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { produtosMap as produtosMapComponents } from "./produtos";
-
-// fallback: tenta importar diretamente do data module se components/produtos não fornecer
-let produtosMap = produtosMapComponents;
-try {
-  if (!produtosMap || Object.keys(produtosMap).length === 0) {
-    // eslint-disable-next-line global-require
-    const data = require("../data/produtos");
-    produtosMap = data.produtosMapExport || data.default || data.getProdutosMap?.();
-  }
-} catch (e) {
-  // ignore
-}
+import { produtosMap as produtosMapExported, getProdutoById } from "../data/produtos"; // ajuste o caminho se sua estrutura for diferente
+import { useCart } from "./CartContext";
 
 export default function ProdutoDetalhe() {
   const router = useRouter();
-  const { id } = useLocalSearchParams();
-
+  const { id, store } = useLocalSearchParams();
   const productId = Array.isArray(id) ? id[0] : id;
-  const produto = productId ? produtosMap?.[productId] : undefined;
+
+  // preferir função de lookup (mais resiliente que acessar o mapa diretamente)
+  const produto = productId ? getProdutoById(productId) : undefined;
+  const { addToCart } = useCart();
+  const [qtd, setQtd] = React.useState(1);
+  const [showQtyInput, setShowQtyInput] = React.useState(false);
+  const [tempQty, setTempQty] = React.useState(String(qtd));
 
   if (!produto) {
     return (
@@ -46,11 +41,24 @@ export default function ProdutoDetalhe() {
     );
   }
 
+  const imageSource = (() => {
+    if (!produto.img) return null;
+    if (typeof produto.img === "object" && produto.img.uri) return produto.img;
+    if (typeof produto.img === "string") return { uri: produto.img };
+    return produto.img;
+  })();
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle={Platform.OS === "ios" ? "dark-content" : "light-content"} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Image source={produto.img} style={styles.imagem} resizeMode="contain" />
+        {imageSource ? (
+          <Image source={imageSource} style={styles.imagem} resizeMode="contain" />
+        ) : (
+          <View style={[styles.imagem, styles.noImage]}> 
+            <Text style={styles.noImageText}>Sem imagem</Text>
+          </View>
+        )}
 
         <View style={styles.content}>
           <View style={styles.rowBetween}>
@@ -75,28 +83,79 @@ export default function ProdutoDetalhe() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.buyButton}
-          activeOpacity={0.85}
-          onPress={() => {
-            Alert.alert("Adicionado", `${produto.nome || "Produto"} adicionado ao carrinho!`);
-          }}
-        >
-          <Text style={styles.buyButtonText}>Adicionar ao Carrinho</Text>
-        </TouchableOpacity>
+        <View style={styles.footerRow}>
+          {!showQtyInput ? (
+            <TouchableOpacity
+              onPress={() => {
+                setTempQty(String(qtd));
+                setShowQtyInput(true);
+              }}
+              style={styles.qtyButton}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.qtyButtonText}>Definir quantidade</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.qtyRow}>
+              <TextInput
+                value={tempQty}
+                onChangeText={setTempQty}
+                keyboardType={Platform.OS === "ios" ? "number-pad" : "numeric"}
+                placeholder="Qtd"
+                placeholderTextColor="#777"
+                style={styles.qtyInput}
+                maxLength={2}
+              />
+
+              <TouchableOpacity
+                onPress={() => {
+                  const n = Math.max(1, Math.min(99, parseInt(tempQty, 10) || 1));
+                  setQtd(n);
+                  setShowQtyInput(false);
+                }}
+                style={styles.qtyOk}
+              >
+                <Text style={styles.qtyOkText}>OK</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowQtyInput(false)}
+                style={styles.qtyCancel}
+              >
+                <Text style={styles.qtyCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={[styles.buyButton, { flex: 1 }]}
+            activeOpacity={0.85}
+            onPress={() => {
+              try {
+                const loja = (typeof store === "string" && (store === "sesc" || store === "senac")) ? store : "sesc";
+                addToCart?.(loja, { ...produto, quantidade: qtd });
+                Alert.alert("Adicionado", `${produto.nome || "Produto"} x${qtd} adicionado ao carrinho!`);
+              } catch (err) {
+                console.warn(err);
+                Alert.alert("Erro", "Não foi possível adicionar ao carrinho.");
+              }
+            }}
+          >
+            <Text style={styles.buyButtonText}>Adicionar ao Carrinho</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
-/* Opcional: CardProduto exportado para ser usado em listas */
 export function CardProduto({ img, nome, preco, produtoId, onPress, store }) {
   const router = useRouter();
-
   const handlePress = () => {
     if (onPress) return onPress();
     if (produtoId) {
       const q = store ? `?store=${store}` : '';
+      // rota ajustada para arquivo existente [id].jsx na raiz do app
       router.push(`/${produtoId}${q}`);
     }
   };
@@ -125,7 +184,7 @@ export function CardProduto({ img, nome, preco, produtoId, onPress, store }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  scrollContent: { paddingBottom: 120 },
+  scrollContent: { paddingBottom: 140 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff", padding: 20 },
   errorText: { color: "#666", fontSize: 18, marginBottom: 20, textAlign: "center" },
   backButton: { backgroundColor: "#004586", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 },
@@ -143,8 +202,17 @@ const styles = StyleSheet.create({
   ingredientesTitle: { fontSize: 16, fontWeight: "600", color: "#333", marginBottom: 8, marginTop: 8 },
   ingrediente: { fontSize: 14, color: "#666", lineHeight: 20, marginBottom: 4 },
   footer: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#fff", padding: 16, borderTopWidth: 1, borderTopColor: "#e0e0e0" },
-  buyButton: { backgroundColor: "#004586", padding: 16, borderRadius: 8, alignItems: "center" },
+  footerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  buyButton: { backgroundColor: "#004586", padding: 16, borderRadius: 8, alignItems: "center", marginLeft: 12 },
   buyButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  qtyButton: { paddingVertical: 10, paddingHorizontal: 12, backgroundColor: "#ff5252", borderRadius: 8 },
+  qtyButtonText: { fontWeight: "700", color: "#fff" },
+  qtyRow: { flexDirection: "row", alignItems: "center" },
+  qtyInput: { width: 64, height: 40, backgroundColor: "#f3f3f3", borderRadius: 6, paddingHorizontal: 8, color: "#333" },
+  qtyOk: { paddingVertical: 10, paddingHorizontal: 12, backgroundColor: "#28a745", borderRadius: 8, marginLeft: 8 },
+  qtyOkText: { color: "#fff", fontWeight: "700" },
+  qtyCancel: { paddingVertical: 10, paddingHorizontal: 12, backgroundColor: "#ccc", borderRadius: 8, marginLeft: 8 },
+  qtyCancelText: { color: "#333", fontWeight: "700" },
 
   /* estilos do card exportado */
   card: { width: "48%", backgroundColor: "#fff", borderRadius: 10, marginBottom: 12, overflow: "hidden" },

@@ -1,4 +1,5 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
@@ -6,10 +7,13 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Link, useRouter } from "expo-router";
+import { Link, useRouter, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+// + sessão Supabase
+import { createClient } from "@supabase/supabase-js";
 
 // Paleta de cores para SESC
 const PALETTE = {
@@ -24,10 +28,120 @@ const PALETTE = {
 const { width, height } = Dimensions.get("window");
 const MENU_WIDTH = Math.min(320, width * 0.8);
 
+// Config do Supabase (REST)
+const SUPABASE_URL = "https://mihtxdlmlntfxkclkvis.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1paHR4ZGxtbG50ZnhrY2xrdmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0MTQ4MzksImV4cCI6MjA3NDk5MDgzOX0.oqMeEOnV5463hF8BaJ916yYyNjDC2bJe73SCP2Fg1yA";
+
+// Cliente Supabase com sessão persistida no AsyncStorage
+let supabaseClient = null;
+const getSupabase = () => {
+  if (supabaseClient) return supabaseClient;
+  try {
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        storage: AsyncStorage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+      },
+    });
+    return supabaseClient;
+  } catch {
+    return null;
+  }
+};
+
+const LAST_LANCHONETE_KEY = "@last_lanchonete";
+
+// Chame esta função imediatamente após autenticar o usuário (no seu Login):
+export async function redirectAfterLogin(router) {
+  try {
+    const last = await AsyncStorage.getItem(LAST_LANCHONETE_KEY);
+    if (last === "senac") {
+      router.replace("/homeSenac");
+      return;
+    }
+    // default para SESC caso não exista preferência salva
+    await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "sesc");
+    router.replace("/homeSesc");
+  } catch {
+    router.replace("/homeSesc");
+  }
+}
+
 export default function About() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const anim = useRef(new Animated.Value(-MENU_WIDTH)).current;
+  const [userEmail, setUserEmail] = useState("");
+  const [userPhoto, setUserPhoto] = useState(""); // NOVO
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const sb = getSupabase();
+        const { data } = (await sb?.auth.getSession()) || {};
+        const emailSessao =
+          data?.session?.user?.email || data?.session?.user?.user_metadata?.email;
+        if (emailSessao) {
+          setUserEmail(emailSessao);
+          // carrega foto local do perfil (fallback)
+          const raw = await AsyncStorage.getItem("@profile");
+          if (raw) {
+            try { const p = JSON.parse(raw); if (p?.imageUrl) setUserPhoto(p.imageUrl); } catch {}
+          }
+          const last = await AsyncStorage.getItem(LAST_LANCHONETE_KEY);
+          if (last === "senac") { router.replace("/homeSenac"); return; }
+          await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "sesc");
+          return;
+        }
+        // fallback legado
+        const saved = await AsyncStorage.getItem("authUser");
+        if (!saved) { router.replace("/LoginSesc"); return; }
+        const savedObj = JSON.parse(saved);
+        setUserEmail(savedObj?.email || "");
+        const raw = await AsyncStorage.getItem("@profile");
+        if (raw) {
+          try { const p = JSON.parse(raw); if (p?.imageUrl) setUserPhoto(p.imageUrl); } catch {}
+        }
+        const last = await AsyncStorage.getItem(LAST_LANCHONETE_KEY);
+        if (last === "senac") { router.replace("/homeSenac"); return; }
+        await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "sesc");
+      } catch {
+        router.replace("/LoginSesc");
+      }
+    })();
+  }, []);
+
+  // Ouve mudanças de autenticação (mantém email atualizado)
+  useEffect(() => {
+    const sb = getSupabase();
+    if (!sb) return;
+    const sub = sb.auth.onAuthStateChange((_event, session) => {
+      const email =
+        session?.user?.email || session?.user?.user_metadata?.email || "";
+      if (email) setUserEmail(email);
+    }).data?.subscription;
+    return () => {
+      try { sub?.unsubscribe?.(); } catch {}
+    };
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        try {
+          const raw = await AsyncStorage.getItem("@profile");
+          if (raw) {
+            try {
+              const p = JSON.parse(raw);
+              if (p?.imageUrl) setUserPhoto(p.imageUrl);
+            } catch {}
+          }
+        } catch {}
+      })();
+    }, [])
+  );
 
   const openMenu = () => {
     setOpen(true);
@@ -46,9 +160,28 @@ export default function About() {
     }).start(() => setOpen(false));
   };
 
-  const navigateTo = (path) => {
+  const navigateTo = async (path) => {
     closeMenu();
+    try {
+      if (path.toLowerCase().includes("senac")) {
+        await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "senac");
+      } else if (path.toLowerCase().includes("sesc")) {
+        await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "sesc");
+      }
+    } catch {}
     router.push(path);
+  };
+
+  const logout = async () => {
+    try {
+      const sb = getSupabase();
+      await sb?.auth.signOut();
+      await AsyncStorage.removeItem("authUser");
+      // Limpa possíveis chaves antigas
+      await AsyncStorage.removeItem("sb.session");
+    } catch {}
+    closeMenu();
+    router.replace("/LoginSesc");
   };
 
   return (
@@ -65,7 +198,11 @@ export default function About() {
         <Text style={styles.text}>Seja bem-vindo</Text>
         <Link href="/Perfil">
           <View style={styles.circulo}>
-            <Text style={styles.circleText}>Ir para o Perfil</Text>
+            {userPhoto ? (
+              <Image source={{ uri: userPhoto }} style={styles.profileThumb} />
+            ) : (
+              <Text style={styles.circleText}>Ir para o Perfil</Text>
+            )}
           </View>
         </Link>
       </View>
@@ -90,6 +227,13 @@ export default function About() {
             <Text style={styles.Text}>Cafe Sesc</Text>
             <Ionicons name="close" size={40} color="white" />
           </TouchableOpacity>
+
+          {!!userEmail && (
+            <Text style={{ color: "white", marginLeft: 10, marginBottom: 8 }}>
+              {userEmail}
+            </Text>
+          )}
+
           <View style={styles.menuItems}>
             <TouchableOpacity
               onPress={() => navigateTo("/homeSesc")}
@@ -110,6 +254,10 @@ export default function About() {
               style={styles.menuItem}
             >
               <Text style={styles.menuText}>Carrinho</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={logout} style={styles.menuItem}>
+              <Text style={styles.menuText}>Sair</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -174,6 +322,13 @@ const styles = StyleSheet.create({
     borderColor: PALETTE.textColor,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  profileThumb: {
+    width: 200, // NOVO
+    height: 200, // NOVO
+    borderRadius: 100,
+    borderWidth: 2,
+    borderColor: PALETTE.textColor,
   },
   Botao: {
     width: 250,

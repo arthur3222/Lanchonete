@@ -1,5 +1,5 @@
 // app/produto/[id].js
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -11,8 +11,10 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  TextInput,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { getProdutoById } from "../data/produtos";
 import { useCart } from "../components/CartContext";
@@ -24,6 +26,24 @@ export default function ProdutoDetalhe() {
   const store = params.store || 'sesc';
   const { addToCart } = useCart();
   const produto = getProdutoById(rawId);
+
+  const [qtd, setQtd] = React.useState(1);              // ADICIONADO
+  const [showQtyInput, setShowQtyInput] = React.useState(false); // ADICIONADO
+  const [tempQty, setTempQty] = React.useState("1");    // ADICIONADO
+  const LAST_LANCHONETE_KEY = "@last_lanchonete";       // ADICIONADO
+
+  // Fallback loja se param ausente
+  const [loja, setLoja] = React.useState(typeof store === "string" && (store === "sesc" || store === "senac") ? store : "sesc");
+  useEffect(() => {
+    (async () => {
+      if (!store) {
+        try {
+          const last = await AsyncStorage.getItem("@last_lanchonete");
+          if (last === "senac" || last === "sesc") setLoja(last);
+        } catch {}
+      }
+    })();
+  }, [store]);
 
   const formatPrice = (value) => {
     if (value === undefined || value === null || Number.isNaN(Number(value))) return "—";
@@ -109,12 +129,80 @@ export default function ProdutoDetalhe() {
       </ScrollView>
 
       <View style={styles.footer}>
+        {/* Seletor de quantidade */}
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+          {!showQtyInput ? (
+            <>
+              <TouchableOpacity
+                onPress={() => setQtd(q => Math.max(1, Math.min(99, q - 1)))}
+                style={{ paddingHorizontal: 14, paddingVertical: 8, backgroundColor: "#eee", borderRadius: 8 }}
+              >
+                <Text style={{ fontSize: 18, fontWeight: "800" }}>-</Text>
+              </TouchableOpacity>
+              <Text style={{ width: 50, textAlign: "center", fontSize: 16 }}>{qtd}</Text>
+              <TouchableOpacity
+                onPress={() => setQtd(q => Math.max(1, Math.min(99, q + 1)))}
+                style={{ paddingHorizontal: 14, paddingVertical: 8, backgroundColor: "#eee", borderRadius: 8 }}
+              >
+                <Text style={{ fontSize: 18, fontWeight: "800" }}>+</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { setTempQty(String(qtd)); setShowQtyInput(true); }}
+                style={{ marginLeft: 12, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: "#ff5252", borderRadius: 8 }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "700" }}>Definir</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <TextInput
+                value={tempQty}
+                onChangeText={setTempQty}
+                keyboardType="number-pad"
+                maxLength={2}
+                placeholder="Qtd"
+                placeholderTextColor="#666"
+                style={{
+                  width: 70,
+                  height: 42,
+                  backgroundColor: "#f3f3f3",
+                  borderRadius: 8,
+                  paddingHorizontal: 8,
+                  marginRight: 8,
+                  color: "#222",
+                }}
+              />
+              <TouchableOpacity
+                onPress={() => {
+                  const n = Math.max(1, Math.min(99, parseInt(tempQty, 10) || 1));
+                  setQtd(n);
+                  setShowQtyInput(false);
+                }}
+                style={{ paddingHorizontal: 14, paddingVertical: 8, backgroundColor: "#28a745", borderRadius: 8, marginRight: 8 }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "700" }}>OK</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowQtyInput(false)}
+                style={{ paddingHorizontal: 14, paddingVertical: 8, backgroundColor: "#ccc", borderRadius: 8 }}
+              >
+                <Text style={{ color: "#333", fontWeight: "700" }}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
         <TouchableOpacity
           style={styles.buyButton}
           activeOpacity={0.85}
           onPress={() => {
-            addToCart(store, produto);
-            Alert.alert("Adicionado", `${produto.nome || "Produto"} adicionado ao carrinho (${store})!`);
+            try {
+              if (!produto) return;
+              addToCart?.(loja, { ...produto, quantidade: qtd });
+              Alert.alert("Adicionado", `${produto.nome || "Produto"} x${qtd} adicionado (${loja})!`);
+            } catch {
+              Alert.alert("Erro", "Falha ao adicionar.");
+            }
           }}
         >
           <Text style={styles.buyButtonText}>Adicionar ao Carrinho</Text>

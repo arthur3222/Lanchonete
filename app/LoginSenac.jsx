@@ -1,11 +1,72 @@
+import React, { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { View, Text, StyleSheet, Dimensions, TextInput, TouchableOpacity } from "react-native";
-import { useRouter } from "expo-router";
-
+import { useRouter, Link } from "expo-router";
 
 const { width } = Dimensions.get("window");
 
+// Config do Supabase (REST)
+const SUPABASE_URL = "https://mihtxdlmlntfxkclkvis.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1paHR4ZGxtbG50ZnhrY2xrdmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0MTQ4MzksImV4cCI6MjA3NDk5MDgzOX0.oqMeEOnV5463hF8BaJ916yYyNjDC2bJe73SCP2Fg1yA";
+
 export default function About() {
   const router = useRouter();
+
+  // Estado de autenticação
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // Auto-login se já existir sessão
+  useEffect(() => {
+    (async () => {
+      try {
+        const sb = await AsyncStorage.getItem("sb.session");
+        if (sb) { router.replace("/homeSenac"); return; }
+        const saved = await AsyncStorage.getItem("authUser");
+        if (saved) router.replace("/homeSenac");
+      } catch {}
+    })();
+  }, []);
+
+  const handleLogin = async () => {
+    setError("");
+    const normEmail = email.trim().toLowerCase();
+    if (!normEmail || !password) { setError("Preencha email e senha."); return; }
+    if (!/^\S+@\S+\.\S+$/.test(normEmail)) { setError("Email inválido."); return; }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ email: normEmail, password }),
+      });
+
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = body?.error_description || body?.msg || body?.message || "Erro ao autenticar.";
+        if (/confirm/i.test(msg)) setError("Confirme seu email antes de entrar.");
+        else if (/invalid/i.test(msg)) setError("Email ou senha incorretos.");
+        else setError(msg);
+        return;
+      }
+
+      await AsyncStorage.setItem("sb.session", JSON.stringify(body));
+      await AsyncStorage.setItem("authUser", JSON.stringify({ email: body?.user?.email || normEmail }));
+      router.replace("/homeSenac");
+    } catch {
+      setError("Erro ao autenticar. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -23,23 +84,31 @@ export default function About() {
           placeholder="Email"
           placeholderTextColor="#fff"
           style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
         />
         <TextInput
           placeholder="Senha"
           placeholderTextColor="#fff"
           secureTextEntry={true}
           style={styles.input}
+          value={password}
+          onChangeText={setPassword}
         />
+        {!!error && <Text style={{ color: "#fff" }}>{error}</Text>}
         <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push("/homeSenac")}
+          style={[styles.button, (loading || !email || !password) && { opacity: 0.6 }]}
+          onPress={handleLogin}
+          disabled={loading || !email || !password}
         >
-          <Text style={styles.text}>Registrar</Text>
+          <Text style={styles.text}>{loading ? "Entrando..." : "Entrar"}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => { try { if (router?.canGoBack?.()) { router.back(); return; } } catch(e){} router.push('/'); }}>
-                <Text style={styles.text}>Voltar</Text>
-        </TouchableOpacity>
+        <Link href={"/index"} >
+                  <Text style={styles.text}>Voltar</Text>
+                </Link >
       </View>
 
       {/* Espaço inferior */}

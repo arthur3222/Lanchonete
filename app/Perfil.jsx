@@ -14,7 +14,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase, upsertProfile, getProfileByEmail } from '../lib/supabaseClient';
+import { createClient } from '@supabase/supabase-js';
 
 function loadAsyncStorage() {
   try {
@@ -29,6 +29,67 @@ function loadAsyncStorage() {
   }
 }
 
+function loadImagePicker() {
+  try {
+    // require dinâmico para não quebrar se o pacote não estiver instalado
+    // eslint-disable-next-line global-require
+    const mod = require('expo-image-picker');
+    return mod?.default ?? mod;
+  } catch (err) {
+    return null;
+  }
+}
+
+// ADICIONADO: cliente Supabase e helpers
+const SUPABASE_URL = "https://mihtxdlmlntfxkclkvis.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1paHR4ZGxtbG50ZnhrY2xrdmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0MTQ4MzksImV4cCI6MjA3NDk5MDgzOX0.oqMeEOnV5463hF8BaJ916yYyNjDC2bJe73SCP2Fg1yA";
+
+let supabase = null;
+function getSupabase() {
+  if (supabase) return supabase;
+  // tenta usar AsyncStorage se disponível para persistir sessão
+  let AS = null;
+  try { AS = loadAsyncStorage(); } catch {}
+  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      storage: AS || undefined,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+    },
+  });
+  return supabase;
+}
+
+// Tabela padrão de perfis: 'profiles' (ajuste se usar outro nome)
+async function upsertProfile(payload) {
+  try {
+    const sb = getSupabase();
+    const { data, error } = await sb
+      .from('profiles')
+      .upsert(payload, { onConflict: 'email' })
+      .select()
+      .maybeSingle();
+    return { data, error };
+  } catch (e) {
+    return { data: null, error: e };
+  }
+}
+
+async function getProfileByEmail(email) {
+  try {
+    const sb = getSupabase();
+    const { data, error } = await sb
+      .from('profiles')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+    return { data, error };
+  } catch (e) {
+    return { data: null, error: e };
+  }
+}
+
 export default function Perfil() {
   const router = useRouter();
   const [nome, setNome] = useState('');
@@ -36,20 +97,71 @@ export default function Perfil() {
   const [senha, setSenha] = useState('');
   const [confirmSenha, setConfirmSenha] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [telefone, setTelefone] = useState('');
 
   const validarEmail = (e) => /\S+@\S+\.\S+/.test((e || '').trim());
+  const onlyDigits = (s) => (s || '').replace(/\D/g, '');
+
+  const pickImage = async () => {
+    const ImagePicker = loadImagePicker();
+    if (!ImagePicker) {
+      Alert.alert('Imagem', 'Seleção de imagem indisponível. Cole a URL manualmente.');
+      return;
+    }
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync?.();
+      if (perm && perm.status !== 'granted') {
+        Alert.alert('Permissão negada', 'Autorize o acesso à galeria nas configurações.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync?.({
+        mediaTypes: ImagePicker.MediaTypeOptions?.Images ?? 'Images',
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (result?.canceled) return;
+      const uri = result?.assets?.[0]?.uri || result?.uri;
+      if (uri) setImageUrl(uri);
+    } catch (e) {
+      Alert.alert('Erro', 'Não foi possível selecionar a imagem.');
+    }
+  };
 
   const handleSalvar = async () => {
     if (!nome.trim()) return Alert.alert('Erro', 'Informe seu nome.');
     if (!validarEmail(email)) return Alert.alert('Erro', 'Informe um email válido.');
     if ((senha || '').length < 6) return Alert.alert('Erro', 'A senha deve ter ao menos 6 caracteres.');
     if (senha !== confirmSenha) return Alert.alert('Erro', 'As senhas não coincidem.');
+    if (!imageUrl) return Alert.alert('Erro', 'Selecione uma foto de perfil pela galeria.');
 
-    const profile = { nome: nome.trim(), email: email.trim(), senha, imageUrl };
+    const cpfDigits = onlyDigits(cpf);
+    const telDigits = onlyDigits(telefone);
+    if (cpf && cpfDigits.length !== 11) return Alert.alert('Erro', 'CPF deve conter 11 dígitos.');
+    if (telefone && (telDigits.length < 10 || telDigits.length > 11)) {
+      return Alert.alert('Erro', 'Telefone deve conter 10 ou 11 dígitos.');
+    }
+
+    const profile = {
+      nome: nome.trim(),
+      email: email.trim(),
+      senha,
+      imageUrl,
+      cpf: cpfDigits || '',
+      telefone: telDigits || '',
+    };
 
     // tenta salvar no Supabase primeiro
     try {
-      const { data, error } = await upsertProfile({ email: profile.email, nome: profile.nome, senha: profile.senha, image_url: profile.imageUrl });
+      const { data, error } = await upsertProfile({
+        email: profile.email,
+        nome: profile.nome,
+        senha: profile.senha,
+        image_url: profile.imageUrl,
+        cpf: profile.cpf,
+        telefone: profile.telefone,
+      });
       if (!error) {
         Keyboard.dismiss();
         Alert.alert('Sucesso', 'Dados salvos no servidor.');
@@ -114,6 +226,8 @@ export default function Perfil() {
             if (data.email) setEmail(data.email);
             if (data.senha) { setSenha(data.senha); setConfirmSenha(data.senha); }
             if (data.image_url) setImageUrl(data.image_url);
+            if (data.cpf) setCpf(data.cpf);
+            if (data.telefone) setTelefone(data.telefone);
             return;
           }
         }
@@ -127,6 +241,8 @@ export default function Perfil() {
             if (obj.email) setEmail(obj.email);
             if (obj.senha) { setSenha(obj.senha); setConfirmSenha(obj.senha); }
             if (obj.imageUrl) setImageUrl(obj.imageUrl);
+            if (obj.cpf) setCpf(obj.cpf);
+            if (obj.telefone) setTelefone(obj.telefone);
           }
         }
       } catch (e) {
@@ -157,19 +273,12 @@ export default function Perfil() {
               <Text style={styles.avatarText}>Sem Imagem</Text>
             </View>
           )}
+          <TouchableOpacity style={styles.pickButton} onPress={pickImage} activeOpacity={0.85}>
+            <Text style={styles.pickText}>Selecionar foto</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.form}>
-          <Text style={styles.label}>URL da Imagem (cole um link ou deixe vazio)</Text>
-          <TextInput
-            style={styles.input}
-            value={imageUrl}
-            onChangeText={setImageUrl}
-            placeholder="https://..."
-            placeholderTextColor="#ddd"
-            autoCapitalize="none"
-          />
-
           <Text style={styles.label}>Nome</Text>
           <TextInput
             style={styles.input}
@@ -188,6 +297,28 @@ export default function Perfil() {
             autoCapitalize="none"
             placeholder="seu@exemplo.com"
             placeholderTextColor="#ddd"
+          />
+
+          <Text style={styles.label}>CPF</Text>
+          <TextInput
+            style={styles.input}
+            value={cpf}
+            onChangeText={setCpf}
+            keyboardType="numeric"
+            placeholder="Somente números"
+            placeholderTextColor="#ddd"
+            maxLength={14}
+          />
+
+          <Text style={styles.label}>Telefone</Text>
+          <TextInput
+            style={styles.input}
+            value={telefone}
+            onChangeText={setTelefone}
+            keyboardType="phone-pad"
+            placeholder="DDD + número"
+            placeholderTextColor="#ddd"
+            maxLength={15}
           />
 
           <Text style={styles.label}>Senha</Text>
@@ -247,6 +378,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: { color: '#fff' },
+  pickButton: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#0066cc',
+  },
+  pickText: { color: '#fff', fontWeight: '600' },
   form: { width: '90%', maxWidth: 400, padding: 16 },
   label: { color: '#fff', marginTop: 12, marginBottom: 6, fontWeight: '600' },
   input: {
