@@ -17,12 +17,12 @@ import { createClient } from "@supabase/supabase-js";
 
 // Paleta de cores para SESC
 const PALETTE = {
-  background: '#004586',
-  circleBg: '#000000',
-  buttonBg: '#000000',
-  sideMenuBg: '#003a73',
-  menuItemBg: '#FF7700',
-  textColor: '#ffffff'
+  background: "#004586",
+  circleBg: "#000000",
+  buttonBg: "#000000",
+  sideMenuBg: "#003a73",
+  menuItemBg: "#FF7700",
+  textColor: "#ffffff",
 };
 
 const { width, height } = Dimensions.get("window");
@@ -30,7 +30,8 @@ const MENU_WIDTH = Math.min(320, width * 0.8);
 
 // Config do Supabase (REST)
 const SUPABASE_URL = "https://mihtxdlmlntfxkclkvis.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1paHR4ZGxtbG50ZnhrY2xrdmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0MTQ4MzksImV4cCI6MjA3NDk5MDgzOX0.oqMeEOnV5463hF8BaJ916yYyNjDC2bJe73SCP2Fg1yA";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1paHR4ZGxtbG50ZnhrY2xrdmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0MTQ4MzksImV4cCI6MjA3NDk5MDgzOX0.oqMeEOnV5463hF8BaJ916yYyNjDC2bJe73SCP2Fg1yA";
 
 // Cliente Supabase com sessão persistida no AsyncStorage
 let supabaseClient = null;
@@ -52,6 +53,7 @@ const getSupabase = () => {
 };
 
 const LAST_LANCHONETE_KEY = "@last_lanchonete";
+const LAST_PAGE_KEY = "@last_page"; // nova chave para última página
 
 // Chame esta função imediatamente após autenticar o usuário (no seu Login):
 export async function redirectAfterLogin(router) {
@@ -82,31 +84,50 @@ export default function About() {
         const sb = getSupabase();
         const { data } = (await sb?.auth.getSession()) || {};
         const emailSessao =
-          data?.session?.user?.email || data?.session?.user?.user_metadata?.email;
+          data?.session?.user?.email ||
+          data?.session?.user?.user_metadata?.email;
         if (emailSessao) {
           setUserEmail(emailSessao);
           // carrega foto local do perfil (fallback)
           const raw = await AsyncStorage.getItem("@profile");
           if (raw) {
-            try { const p = JSON.parse(raw); if (p?.imageUrl) setUserPhoto(p.imageUrl); } catch {}
+            try {
+              const p = JSON.parse(raw);
+              if (p?.imageUrl) setUserPhoto(p.imageUrl);
+            } catch {}
           }
-          const last = await AsyncStorage.getItem(LAST_LANCHONETE_KEY);
-          if (last === "senac") { router.replace("/homeSenac"); return; }
+          // redireciona para última página visitada
+          const lastPage = await AsyncStorage.getItem(LAST_PAGE_KEY);
+          if (lastPage && lastPage !== "/homeSesc") {
+            router.replace(lastPage);
+            return;
+          }
           await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "sesc");
+          await AsyncStorage.setItem(LAST_PAGE_KEY, "/homeSesc");
           return;
         }
         // fallback legado
         const saved = await AsyncStorage.getItem("authUser");
-        if (!saved) { router.replace("/LoginSesc"); return; }
+        if (!saved) {
+          router.replace("/LoginSesc");
+          return;
+        }
         const savedObj = JSON.parse(saved);
         setUserEmail(savedObj?.email || "");
         const raw = await AsyncStorage.getItem("@profile");
         if (raw) {
-          try { const p = JSON.parse(raw); if (p?.imageUrl) setUserPhoto(p.imageUrl); } catch {}
+          try {
+            const p = JSON.parse(raw);
+            if (p?.imageUrl) setUserPhoto(p.imageUrl);
+          } catch {}
         }
-        const last = await AsyncStorage.getItem(LAST_LANCHONETE_KEY);
-        if (last === "senac") { router.replace("/homeSenac"); return; }
+        const lastPage = await AsyncStorage.getItem(LAST_PAGE_KEY);
+        if (lastPage && lastPage !== "/homeSesc") {
+          router.replace(lastPage);
+          return;
+        }
         await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "sesc");
+        await AsyncStorage.setItem(LAST_PAGE_KEY, "/homeSesc");
       } catch {
         router.replace("/LoginSesc");
       }
@@ -123,7 +144,9 @@ export default function About() {
       if (email) setUserEmail(email);
     }).data?.subscription;
     return () => {
-      try { sub?.unsubscribe?.(); } catch {}
+      try {
+        sub?.unsubscribe?.();
+      } catch {}
     };
   }, []);
 
@@ -168,6 +191,8 @@ export default function About() {
       } else if (path.toLowerCase().includes("sesc")) {
         await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "sesc");
       }
+      // Salvar última página visitada
+      await AsyncStorage.setItem(LAST_PAGE_KEY, path);
     } catch {}
     router.push(path);
   };
@@ -181,7 +206,7 @@ export default function About() {
       await AsyncStorage.removeItem("sb.session");
     } catch {}
     closeMenu();
-    router.replace("/LoginSesc");
+    router.replace("/index");
   };
 
   return (
@@ -256,9 +281,16 @@ export default function About() {
               <Text style={styles.menuText}>Carrinho</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={logout} style={styles.menuItem}>
-              <Text style={styles.menuText}>Sair</Text>
+            <TouchableOpacity
+              onPress={() => navigateTo("/ProdutoSesc")}
+              style={styles.menuItem}
+            >
+              <Text style={styles.menuText}>Lanchonete</Text>
             </TouchableOpacity>
+
+            <Link href={"/"} style={styles.menuItem}>
+              <Text style={styles.menuText}>Sair</Text>
+            </Link>
           </View>
         </Animated.View>
       )}
@@ -305,13 +337,13 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   circleText: {
     color: PALETTE.textColor,
     fontSize: 18,
     fontWeight: "700",
-    textAlign: 'center',
+    textAlign: "center",
   },
   circulo: {
     width: 250,
@@ -320,8 +352,8 @@ const styles = StyleSheet.create({
     backgroundColor: PALETTE.circleBg,
     borderWidth: 2,
     borderColor: PALETTE.textColor,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   profileThumb: {
     width: 200, // NOVO

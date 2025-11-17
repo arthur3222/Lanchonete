@@ -1,7 +1,29 @@
+import React, { useEffect } from "react";
 import { View, Text, StyleSheet, ImageBackground } from "react-native";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const LAST_PAGE_KEY = "@last_page";
 
 export default function About() {
+  const router = useRouter();
+
+  // Redirecionar para última página visitada ao montar
+  useEffect(() => {
+    (async () => {
+      try {
+        const lastPage = await AsyncStorage.getItem(LAST_PAGE_KEY);
+        // Se houver uma página salva e não for o index, redireciona
+        if (lastPage && lastPage !== "/" && lastPage !== "/index") {
+          router.replace(lastPage);
+        }
+      } catch (e) {
+        // Ignora erros e permanece no index
+        console.log("Erro ao carregar última página:", e);
+      }
+    })();
+  }, []);
+
   return (
     <ImageBackground 
       source={require("../assets/abc.png")} // ajuste o caminho da imagem

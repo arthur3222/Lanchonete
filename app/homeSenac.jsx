@@ -33,6 +33,7 @@ const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1paHR4ZGxtbG50ZnhrY2xrdmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0MTQ4MzksImV4cCI6MjA3NDk5MDgzOX0.oqMeEOnV5463hF8BaJ916yYyNjDC2bJe73SCP2Fg1yA";
 
 const LAST_LANCHONETE_KEY = "@last_lanchonete"; // adicionado
+const LAST_PAGE_KEY = "@last_page"; // nova chave para última página
 
 // cliente Supabase com sessão persistente
 let supabaseClient = null;
@@ -66,21 +67,26 @@ export default function About() {
         const sb = getSupabase();
         const { data } = (await sb?.auth.getSession()) || {};
         const emailSessao =
-          data?.session?.user?.email || data?.session?.user?.user_metadata?.email;
+          data?.session?.user?.email ||
+          data?.session?.user?.user_metadata?.email;
         if (emailSessao) {
           setUserEmail(emailSessao);
           // carrega foto local do perfil
           const raw = await AsyncStorage.getItem("@profile");
           if (raw) {
-            try { const p = JSON.parse(raw); if (p?.imageUrl) setUserPhoto(p.imageUrl); } catch {}
+            try {
+              const p = JSON.parse(raw);
+              if (p?.imageUrl) setUserPhoto(p.imageUrl);
+            } catch {}
           }
-          // redireciona conforme última lanchonete
-          const last = await AsyncStorage.getItem(LAST_LANCHONETE_KEY);
-          if (last === "sesc") {
-            router.replace("/homeSesc");
+          // redireciona para última página visitada
+          const lastPage = await AsyncStorage.getItem(LAST_PAGE_KEY);
+          if (lastPage && lastPage !== "/homeSenac") {
+            router.replace(lastPage);
             return;
           }
           await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "senac");
+          await AsyncStorage.setItem(LAST_PAGE_KEY, "/homeSenac");
           return;
         }
         // fallback legado
@@ -93,14 +99,18 @@ export default function About() {
         setUserEmail(savedObj?.email || "");
         const raw = await AsyncStorage.getItem("@profile");
         if (raw) {
-          try { const p = JSON.parse(raw); if (p?.imageUrl) setUserPhoto(p.imageUrl); } catch {}
+          try {
+            const p = JSON.parse(raw);
+            if (p?.imageUrl) setUserPhoto(p.imageUrl);
+          } catch {}
         }
-        const last = await AsyncStorage.getItem(LAST_LANCHONETE_KEY);
-        if (last === "sesc") {
-          router.replace("/homeSesc");
+        const lastPage = await AsyncStorage.getItem(LAST_PAGE_KEY);
+        if (lastPage && lastPage !== "/homeSenac") {
+          router.replace(lastPage);
           return;
         }
         await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "senac");
+        await AsyncStorage.setItem(LAST_PAGE_KEY, "/homeSenac");
       } catch {
         router.replace("/LoginSenac");
       }
@@ -132,6 +142,8 @@ export default function About() {
       } else if (path.toLowerCase().includes("sesc")) {
         await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "sesc");
       }
+      // Salvar última página visitada
+      await AsyncStorage.setItem(LAST_PAGE_KEY, path);
     } catch {}
     router.push(path);
   };
@@ -219,9 +231,16 @@ export default function About() {
               <Text style={styles.menuText}>Carrinho</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={logout} style={styles.menuItem}>
-              <Text style={styles.menuText}>Sair</Text>
+            <TouchableOpacity
+              onPress={() => navigateTo("/ProdutoSenac")}
+              style={styles.menuItem}
+            >
+              <Text style={styles.menuText}>Lanchonete</Text>
             </TouchableOpacity>
+
+            <Link href={"/"} style={styles.menuItem}>
+              <Text style={styles.menuText}>Sair</Text>
+            </Link>
           </View>
         </Animated.View>
       )}

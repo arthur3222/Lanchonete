@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, Image, Alert, TextInput } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, Image, Alert, TextInput, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useCart } from "../components/CartContext";
@@ -146,6 +146,7 @@ const buildCompactItems = (lista) => {
 // Chave de persistência
 const SESC_CART_KEY = "@carrinho_sesc";
 const LAST_LANCHONETE_KEY = "@last_lanchonete";
+const LAST_PAGE_KEY = "@last_page"; // nova chave para última página
 
 // Helper AsyncStorage dinâmico
 const getAsyncStorage = () => {
@@ -197,6 +198,7 @@ export default function About() {
     try {
       const AS = getAsyncStorage();
       AS?.setItem(LAST_LANCHONETE_KEY, "sesc");
+      AS?.setItem(LAST_PAGE_KEY, "/carrinhoSesc");
     } catch {}
   }, []);
 
@@ -209,6 +211,8 @@ export default function About() {
       } else if (path.toLowerCase().includes("sesc")) {
         await AS?.setItem(LAST_LANCHONETE_KEY, "sesc");
       }
+      // Salvar última página visitada
+      await AS?.setItem(LAST_PAGE_KEY, path);
     } catch {}
     router.push(path);
   };
@@ -380,10 +384,11 @@ export default function About() {
         <Text style={{ color: "#fff", fontSize: 20, marginBottom: 8 }}>
           Carrinho Sesc
         </Text>
-        {!(carts.sesc || []).length ? (
-          <Text style={{ color: "#fff" }}>Carrinho vazio</Text>
-        ) : (
-          (carts.sesc || []).map((p, i) => {
+        <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+          {!(carts.sesc || []).length ? (
+            <Text style={{ color: "#fff" }}>Carrinho vazio</Text>
+          ) : (
+            (carts.sesc || []).map((p, i) => {
             const src = getProductImageSource(p);
             const qty = Number(p?.quantidade || p?.qtd || 1);
             const price = Number(p?.preco || 0);
@@ -489,6 +494,7 @@ export default function About() {
             </Text>
           </TouchableOpacity>
         </View>
+        </ScrollView>
       </View>
 
       {/* Overlay e menu lateral */}
@@ -556,12 +562,20 @@ const styles = StyleSheet.create({
   },
   box2: {
     width: "100%",
-    height: "44%",
+    flex: 1,
     backgroundColor: "#004586",
     borderTopWidth: 2,
     borderColor: "white",
-    justifyContent: "center",
+    paddingTop: 16,
     alignItems: "center",
+  },
+  scrollContainer: {
+    width: "100%",
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+    paddingHorizontal: 8,
   },
   box3: {
     width: "100%",

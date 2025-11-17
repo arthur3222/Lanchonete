@@ -21,6 +21,7 @@ const MENU_WIDTH = Math.min(320, width * 0.8);
 const TABLE_PEDIDOS = "pedidos";
 const SENAC_CART_KEY = "@carrinho_senac";
 const LAST_LANCHONETE_KEY = "@last_lanchonete";
+const LAST_PAGE_KEY = "@last_page"; // nova chave para última página
 
 const debugLog = (...a) => {
   try {
@@ -37,7 +38,9 @@ const getSupabase = () => {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
   try {
     let AS = null;
-    try { AS = require("@react-native-async-storage/async-storage").default; } catch {}
+    try {
+      AS = require("@react-native-async-storage/async-storage").default;
+    } catch {}
     supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         storage: AS || undefined,
@@ -114,7 +117,13 @@ const fetchLanchoneteId = async (supabase, nome) => {
 const buildGroupedItems = (lista) => {
   const map = {};
   lista.forEach((p) => {
-    const nome = (p.nome || p.name || p.titulo || p.title || "Desconhecido").trim();
+    const nome = (
+      p.nome ||
+      p.name ||
+      p.titulo ||
+      p.title ||
+      "Desconhecido"
+    ).trim();
     const qtd = Number(p.quantidade || p.qtd || 1);
     const preco = Number(p.preco || 0);
     const realQtd = isNaN(qtd) ? 1 : qtd;
@@ -144,11 +153,12 @@ const SENAC_THEME = {
 
 export default function CarrinhoSenac() {
   const router = useRouter();
-  const { carts, removeFromCart, clearCart, addToCart, setCartItems } = useCart();
+  const { carts, removeFromCart, clearCart, addToCart, setCartItems } =
+    useCart();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editingIdx, setEditingIdx] = useState(null);   // ADICIONADO
-  const [tempQty, setTempQty] = useState("1");          // ADICIONADO
+  const [editingIdx, setEditingIdx] = useState(null); // ADICIONADO
+  const [tempQty, setTempQty] = useState("1"); // ADICIONADO
   const anim = useRef(new Animated.Value(-MENU_WIDTH)).current;
 
   const openMenu = () => {
@@ -164,8 +174,7 @@ export default function CarrinhoSenac() {
       toValue: -MENU_WIDTH,
       duration: 200,
       useNativeDriver: true,
-    })
-      .start(() => setOpen(false));
+    }).start(() => setOpen(false));
   };
   const navigateTo = async (path) => {
     closeMenu();
@@ -176,6 +185,8 @@ export default function CarrinhoSenac() {
       } else if (path.toLowerCase().includes("sesc")) {
         await AS?.setItem(LAST_LANCHONETE_KEY, "sesc");
       }
+      // Salvar última página visitada
+      await AS?.setItem(LAST_PAGE_KEY, path);
     } catch {}
     router.push(path);
   };
@@ -203,39 +214,60 @@ export default function CarrinhoSenac() {
       const lanchoneteId = await fetchLanchoneteId(supabase, "senac");
       if (!lanchoneteId) throw new Error("Lanchonete 'senac' não encontrada.");
       // Pedido único
-      rows = [{
-        lanchonete_id: lanchoneteId,
-        origem: "senac",
-        itens: grouped.map(g => ({ nome: g.nome, quantidade: g.quantidade })),
-        total: totalNumber,
-        status: "pendente",
-        created_at: new Date().toISOString(),
-      }];
+      rows = [
+        {
+          lanchonete_id: lanchoneteId,
+          origem: "senac",
+          itens: grouped.map((g) => ({
+            nome: g.nome,
+            quantidade: g.quantidade,
+          })),
+          total: totalNumber,
+          status: "pendente",
+          created_at: new Date().toISOString(),
+        },
+      ];
       const { error } = await supabase.from(TABLE_PEDIDOS).insert(rows);
       if (error) throw error;
       Alert.alert("Pedido", "Pedido confirmado!");
       clearCart("senac");
       const AS = getAsyncStorage();
       AS?.removeItem(SENAC_CART_KEY).catch(() => {});
-      try { await AS?.setItem(LAST_LANCHONETE_KEY, "senac"); } catch {}
+      try {
+        await AS?.setItem(LAST_LANCHONETE_KEY, "senac");
+      } catch {}
       router.push("/homeSenac");
     } catch (e) {
       const msg = e?.message || "Erro desconhecido";
       try {
-        const AS = getAsyncStorage() || require("@react-native-async-storage/async-storage").default;
+        const AS =
+          getAsyncStorage() ||
+          require("@react-native-async-storage/async-storage").default;
         const localKey = "@pedidos_offline";
         const raw = await AS.getItem(localKey);
         const lista = raw ? JSON.parse(raw) : [];
-        const fallbackRows = rows.length ? rows : [{
-          origem: "senac",
-          itens: grouped.map(g => ({ nome: g.nome, quantidade: g.quantidade })),
-          total: totalNumber,
-          status: "pendente",
-          created_at: new Date().toISOString(),
-        }];
-        fallbackRows.forEach(r => lista.push({ ...r, tabelaDestino: TABLE_PEDIDOS, erroSync: msg }));
+        const fallbackRows = rows.length
+          ? rows
+          : [
+              {
+                origem: "senac",
+                itens: grouped.map((g) => ({
+                  nome: g.nome,
+                  quantidade: g.quantidade,
+                })),
+                total: totalNumber,
+                status: "pendente",
+                created_at: new Date().toISOString(),
+              },
+            ];
+        fallbackRows.forEach((r) =>
+          lista.push({ ...r, tabelaDestino: TABLE_PEDIDOS, erroSync: msg })
+        );
         await AS.setItem(localKey, JSON.stringify(lista));
-        Alert.alert("Offline", "Servidor indisponível. Pedido salvo localmente.\n" + msg);
+        Alert.alert(
+          "Offline",
+          "Servidor indisponível. Pedido salvo localmente.\n" + msg
+        );
       } catch {
         Alert.alert("Erro", "Falha ao confirmar.\n" + msg);
       }
@@ -250,6 +282,9 @@ export default function CarrinhoSenac() {
       try {
         const AS = getAsyncStorage();
         if (!AS) return;
+        // Salvar última página ao montar
+        await AS.setItem(LAST_PAGE_KEY, "/carrinhoSenac");
+        await AS.setItem(LAST_LANCHONETE_KEY, "senac");
         const raw = await AS.getItem(SENAC_CART_KEY);
         if (!raw) return;
         const salvos = JSON.parse(raw);
@@ -279,14 +314,20 @@ export default function CarrinhoSenac() {
     if (!sb) return;
     let sub;
     (async () => {
-      try { await sb.auth.getSession(); } catch {}
+      try {
+        await sb.auth.getSession();
+      } catch {}
       try {
         sub = sb.auth.onAuthStateChange((_event, session) => {
           debugLog("auth change", _event, !!session);
         }).data?.subscription;
       } catch {}
     })();
-    return () => { try { sub?.unsubscribe?.(); } catch {} };
+    return () => {
+      try {
+        sub?.unsubscribe?.();
+      } catch {}
+    };
   }, []);
 
   // Marca lanchonete atual ao montar
@@ -310,10 +351,14 @@ export default function CarrinhoSenac() {
       const item = { ...list[idx] };
       const curr = Number(item.quantidade || item.qtd || 1);
       const next = Math.max(1, Math.min(99, curr + delta));
-      item.quantidade = next; delete item.qtd;
+      item.quantidade = next;
+      delete item.qtd;
       list[idx] = item;
       if (setCartItems) setCartItems("senac", list);
-      else if (addToCart) { clearCart?.("senac"); list.forEach(it => addToCart("senac", it)); }
+      else if (addToCart) {
+        clearCart?.("senac");
+        list.forEach((it) => addToCart("senac", it));
+      }
     } catch {}
   };
   const setQty = (idx, qty) => {
@@ -322,10 +367,14 @@ export default function CarrinhoSenac() {
       if (!list[idx]) return;
       const item = { ...list[idx] };
       const next = Math.max(1, Math.min(99, parseInt(qty, 10) || 1));
-      item.quantidade = next; delete item.qtd;
+      item.quantidade = next;
+      delete item.qtd;
       list[idx] = item;
       if (setCartItems) setCartItems("senac", list);
-      else if (addToCart) { clearCart?.("senac"); list.forEach(it => addToCart("senac", it)); }
+      else if (addToCart) {
+        clearCart?.("senac");
+        list.forEach((it) => addToCart("senac", it));
+      }
     } catch {}
   };
 
@@ -343,7 +392,7 @@ export default function CarrinhoSenac() {
         <Text style={{ color: "#fff", fontSize: 20, marginBottom: 8 }}>
           Carrinho Senac
         </Text>
-        {(!(carts.senac || []).length) ? (
+        {!(carts.senac || []).length ? (
           <Text style={{ color: "#fff" }}>Carrinho vazio</Text>
         ) : (
           (carts.senac || []).map((p, i) => {
@@ -354,10 +403,21 @@ export default function CarrinhoSenac() {
             return (
               <View key={i} style={styles.productRow}>
                 {src ? (
-                  <Image source={src} style={styles.productImage} resizeMode="cover" />
+                  <Image
+                    source={src}
+                    style={styles.productImage}
+                    resizeMode="cover"
+                  />
                 ) : (
-                  <View style={[styles.productImage, styles.productImagePlaceholder]}>
-                    <Text style={{ color: "#fff", fontSize: 10 }}>Sem foto</Text>
+                  <View
+                    style={[
+                      styles.productImage,
+                      styles.productImagePlaceholder,
+                    ]}
+                  >
+                    <Text style={{ color: "#fff", fontSize: 10 }}>
+                      Sem foto
+                    </Text>
                   </View>
                 )}
                 <View style={styles.productInfo}>
@@ -365,18 +425,43 @@ export default function CarrinhoSenac() {
                     {p.nome} — R$ {price.toFixed(2)} x {qty} = R$ {subtotal}
                   </Text>
 
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                      marginTop: 6,
+                    }}
+                  >
                     <TouchableOpacity
                       onPress={() => changeQty(i, -1)}
-                      style={{ paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "#eee", borderRadius: 6 }}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
+                        backgroundColor: "#eee",
+                        borderRadius: 6,
+                      }}
                       activeOpacity={0.8}
                     >
                       <Text style={{ fontSize: 16, fontWeight: "800" }}>-</Text>
                     </TouchableOpacity>
-                    <Text style={{ minWidth: 28, textAlign: "center", color: "#fff" }}>{qty}</Text>
+                    <Text
+                      style={{
+                        minWidth: 28,
+                        textAlign: "center",
+                        color: "#fff",
+                      }}
+                    >
+                      {qty}
+                    </Text>
                     <TouchableOpacity
                       onPress={() => changeQty(i, +1)}
-                      style={{ paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "#eee", borderRadius: 6 }}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
+                        backgroundColor: "#eee",
+                        borderRadius: 6,
+                      }}
                       activeOpacity={0.8}
                     >
                       <Text style={{ fontSize: 16, fontWeight: "800" }}>+</Text>
@@ -384,15 +469,34 @@ export default function CarrinhoSenac() {
 
                     {/* Botão Definir */}
                     <TouchableOpacity
-                      onPress={() => { setEditingIdx(i); setTempQty(String(qty)); }}
-                      style={{ paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "#FF7700", borderRadius: 6, marginLeft: 8 }}
+                      onPress={() => {
+                        setEditingIdx(i);
+                        setTempQty(String(qty));
+                      }}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
+                        backgroundColor: "#FF7700",
+                        borderRadius: 6,
+                        marginLeft: 8,
+                      }}
                       activeOpacity={0.85}
                     >
-                      <Text style={{ color: "#fff", fontWeight: "700" }}>Definir</Text>
+                      <Text style={{ color: "#fff", fontWeight: "700" }}>
+                        Definir
+                      </Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity onPress={() => removeFromCart("senac", i)}>
-                      <Text style={{ color: "#fff", textDecorationLine: "underline", marginLeft: 12 }}>
+                    <TouchableOpacity
+                      onPress={() => removeFromCart("senac", i)}
+                    >
+                      <Text
+                        style={{
+                          color: "#fff",
+                          textDecorationLine: "underline",
+                          marginLeft: 12,
+                        }}
+                      >
                         Remover
                       </Text>
                     </TouchableOpacity>
@@ -400,26 +504,57 @@ export default function CarrinhoSenac() {
 
                   {/* Inline editor de quantidade */}
                   {editingIdx === i && (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        marginTop: 8,
+                      }}
+                    >
                       <TextInput
                         value={tempQty}
                         onChangeText={setTempQty}
                         keyboardType="number-pad"
                         placeholder="Qtd"
                         placeholderTextColor="#bbb"
-                        style={{ width: 70, height: 40, backgroundColor: "#f3f3f3", borderRadius: 6, paddingHorizontal: 8, color: "#333" }}
+                        style={{
+                          width: 70,
+                          height: 40,
+                          backgroundColor: "#f3f3f3",
+                          borderRadius: 6,
+                          paddingHorizontal: 8,
+                          color: "#333",
+                        }}
                       />
                       <TouchableOpacity
-                        onPress={() => { setQty(i, tempQty); setEditingIdx(null); }}
-                        style={{ paddingHorizontal: 12, paddingVertical: 8, backgroundColor: "#28a745", borderRadius: 6 }}
+                        onPress={() => {
+                          setQty(i, tempQty);
+                          setEditingIdx(null);
+                        }}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          backgroundColor: "#28a745",
+                          borderRadius: 6,
+                        }}
                       >
-                        <Text style={{ color: "#fff", fontWeight: "700" }}>Salvar</Text>
+                        <Text style={{ color: "#fff", fontWeight: "700" }}>
+                          Salvar
+                        </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => setEditingIdx(null)}
-                        style={{ paddingHorizontal: 12, paddingVertical: 8, backgroundColor: "#ccc", borderRadius: 6 }}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          backgroundColor: "#ccc",
+                          borderRadius: 6,
+                        }}
                       >
-                        <Text style={{ color: "#333", fontWeight: "700" }}>Cancelar</Text>
+                        <Text style={{ color: "#333", fontWeight: "700" }}>
+                          Cancelar
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -443,10 +578,7 @@ export default function CarrinhoSenac() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[
-              styles.confirmButton,
-              saving && { opacity: 0.55 },
-            ]}
+            style={[styles.confirmButton, saving && { opacity: 0.55 }]}
             onPress={confirmOrder}
             disabled={saving}
             activeOpacity={0.75}
@@ -494,6 +626,15 @@ export default function CarrinhoSenac() {
               style={styles.menuItem}
             >
               <Text style={styles.menuText}>Carrinho</Text>
+            </TouchableOpacity>
+
+           
+
+            <TouchableOpacity
+              onPress={() => navigateTo("/ProdutoSenac")}
+              style={styles.menuItem}
+            >
+              <Text style={styles.menuText}>Lanchonete</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>

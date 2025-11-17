@@ -1,4 +1,5 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
@@ -16,11 +17,23 @@ import { produtos } from "../data/produtos";
 
 const { width, height } = Dimensions.get("window");
 const MENU_WIDTH = Math.min(320, width * 0.8);
+const LAST_PAGE_KEY = "@last_page";
+const LAST_LANCHONETE_KEY = "@last_lanchonete";
 
 export default function About() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const anim = useRef(new Animated.Value(-MENU_WIDTH)).current;
+
+  // Salvar última página ao montar
+  useEffect(() => {
+    (async () => {
+      try {
+        await AsyncStorage.setItem(LAST_PAGE_KEY, "/ProdutoSenac");
+        await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "senac");
+      } catch {}
+    })();
+  }, []);
 
   const openMenu = () => {
     setOpen(true);
@@ -39,8 +52,16 @@ export default function About() {
     }).start(() => setOpen(false));
   };
 
-  const navigateTo = (path) => {
+  const navigateTo = async (path) => {
     closeMenu();
+    try {
+      await AsyncStorage.setItem(LAST_PAGE_KEY, path);
+      if (path.toLowerCase().includes("senac")) {
+        await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "senac");
+      } else if (path.toLowerCase().includes("sesc")) {
+        await AsyncStorage.setItem(LAST_LANCHONETE_KEY, "sesc");
+      }
+    } catch {}
     router.push(path);
   };
 
@@ -94,19 +115,40 @@ export default function About() {
             <Ionicons name="close" size={40} color="white" />
           </TouchableOpacity>
           <View style={styles.menuItems}>
-            <TouchableOpacity onPress={() => navigateTo("/homeSesc")} style={styles.menuItem}>
-              <Text style={styles.menuText}>home</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => navigateTo("/homeSenac")} style={styles.menuItem}>
-              <Text style={styles.menuText}>Café senac</Text>
-            </TouchableOpacity>
-
-
-            <TouchableOpacity onPress={() => navigateTo("/carrinhoSenac")} style={styles.menuItem}>
-              <Text style={styles.menuText}>Carrinho</Text>
-            </TouchableOpacity>
-          </View>
+                      <TouchableOpacity
+                        onPress={() => navigateTo("/homeSenac")}
+                        style={styles.menuItem}
+                      >
+                        <Text style={styles.menuText}>Home</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => navigateTo("/homeSenac")}
+                        style={styles.menuItem}
+                      >
+                        <Text style={styles.menuText}>Café Senac</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => navigateTo("/homeSesc")}
+                        style={styles.menuItem}
+                      >
+                        <Text style={styles.menuText}>Café Sesc</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => navigateTo("/carrinhoSenac")}
+                        style={styles.menuItem}
+                      >
+                        <Text style={styles.menuText}>Carrinho</Text>
+                      </TouchableOpacity>
+          
+                     
+          
+                      <TouchableOpacity
+                        onPress={() => navigateTo("/ProdutoSenac")}
+                        style={styles.menuItem}
+                      >
+                        <Text style={styles.menuText}>Lanchonete</Text>
+                      </TouchableOpacity>
+                    </View>
         </Animated.View>
       )}
     </SafeAreaView>
